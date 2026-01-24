@@ -8,10 +8,7 @@ export function CustomEdge({
   targetY,
   style,
   markerEnd,
-  source,
-  target,
   sourceHandleId,
-  targetHandleId,
   selected,
 }: EdgeProps) {
   // Calculate a stable offset based on source handle to prevent overlap

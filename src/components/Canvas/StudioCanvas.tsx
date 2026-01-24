@@ -16,8 +16,6 @@ import { useStudioStore } from '../../store/useStudioStore';
 import { InstrumentNode } from '../Nodes/InstrumentNode';
 import { CustomEdge } from './CustomEdge';
 import type { InstrumentPreset, InstrumentNodeData } from '../../types';
-// InstrumentNodeData used for type assertions
-import { wouldCreateCycle } from '../../utils/loopDetection';
 
 const nodeTypes: NodeTypes = {
   instrument: InstrumentNode as any,
