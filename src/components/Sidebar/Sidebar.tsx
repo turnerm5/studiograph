@@ -300,63 +300,73 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">MIDI In</label>
-            <input
-              type="number"
-              min={0}
-              max={4}
-              value={midiIn}
-              onChange={(e) => setMidiIn(parseInt(e.target.value) || 0)}
-              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
+        <div className="flex gap-3">
+          {/* MIDI Ports */}
+          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">MIDI Ports</h4>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">MIDI In</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={midiIn}
+                  onChange={(e) => setMidiIn(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">MIDI Out</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={midiOut}
+                  onChange={(e) => setMidiOut(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">MIDI Thru</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={midiThru}
+                  onChange={(e) => setMidiThru(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">MIDI Out</label>
-            <input
-              type="number"
-              min={0}
-              max={4}
-              value={midiOut}
-              onChange={(e) => setMidiOut(parseInt(e.target.value) || 0)}
-              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">MIDI Thru</label>
-            <input
-              type="number"
-              min={0}
-              max={4}
-              value={midiThru}
-              onChange={(e) => setMidiThru(parseInt(e.target.value) || 0)}
-              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Audio In</label>
-            <input
-              type="number"
-              min={0}
-              max={8}
-              value={audioIn}
-              onChange={(e) => setAudioIn(parseInt(e.target.value) || 0)}
-              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Audio Out</label>
-            <input
-              type="number"
-              min={0}
-              max={8}
-              value={audioOut}
-              onChange={(e) => setAudioOut(parseInt(e.target.value) || 0)}
-              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
+          {/* Audio Ports */}
+          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Audio Ports</h4>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">Audio In</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={8}
+                  value={audioIn}
+                  onChange={(e) => setAudioIn(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">Audio Out</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={8}
+                  value={audioOut}
+                  onChange={(e) => setAudioOut(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+            </div>
           </div>
         </div>
         {/* CC Definitions */}
