@@ -69,14 +69,24 @@ export function parseStudioImport(file: File): Promise<StudioExport> {
         // Ensure customPresets is an array (may be missing in older exports)
         const customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
 
-        // Backfill automationLanes for older save files
-        const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            automationLanes: node.data.automationLanes || [],
-          },
-        }));
+        // Backfill automationLanes for older save files and migrate DrumLane data
+        const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => {
+          const nodeData = { ...node.data, automationLanes: node.data.automationLanes || [] };
+
+          // Migrate old DrumLane format (had `channel` field, no `trig`/`chan`)
+          if (nodeData.drumLanes && Array.isArray(nodeData.drumLanes)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            nodeData.drumLanes = (nodeData.drumLanes as any[]).map((lane) => ({
+              lane: lane.lane ?? lane.channel ?? 1,
+              trig: lane.trig ?? null,
+              chan: lane.chan ?? null,
+              note: lane.note ?? null,
+              name: lane.name || '',
+            }));
+          }
+
+          return { ...node, data: nodeData };
+        });
 
         resolve({
           version: data.version,

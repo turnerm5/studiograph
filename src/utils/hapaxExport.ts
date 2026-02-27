@@ -84,8 +84,11 @@ export function generateHapaxDefinition(definition: HapaxDefinition): string {
     // Sort by lane number descending (higher lanes first, matching Hapax format)
     const sortedLanes = [...definition.drumLanes].sort((a, b) => b.lane - a.lane);
     for (const lane of sortedLanes) {
-      // Format: channel:NULL:NULL:note lane_number name
-      lines.push(`${lane.channel}:NULL:NULL:${lane.note} ${lane.lane} ${lane.name}`);
+      const row = lane.lane;
+      const trig = lane.trig !== null && lane.trig !== undefined ? lane.trig : 'NULL';
+      const chan = lane.chan || 'NULL';
+      const note = lane.note !== null && lane.note !== undefined ? lane.note : 'NULL';
+      lines.push(`${row}:${trig}:${chan}:${note} ${lane.name}`);
     }
   }
   lines.push('[/DRUMLANES]');

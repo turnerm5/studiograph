@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import { X, Download, Plus, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { useStudioStore } from '../../store/useStudioStore';
 import { generateAllDefinitions, downloadFile } from '../../utils/hapaxExport';
-import type { InstrumentType, AssignCC, AutomationLane, AutomationType, InstrumentNodeData } from '../../types';
+import { DEFAULT_DRUM_LANES } from '../../data/defaultNodes';
+import type { InstrumentType, AssignCC, AutomationLane, AutomationType, DrumLane, InstrumentNodeData } from '../../types';
 
 export function NodeEditor() {
   const {
@@ -13,6 +14,7 @@ export function NodeEditor() {
     updateNodeData,
     updateAssignCCs,
     updateAutomationLanes,
+    updateDrumLanes,
   } = useStudioStore();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
@@ -31,6 +33,10 @@ export function NodeEditor() {
     nrpnDepth: 7 | 14;
     paramName: string;
   }>({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
+
+  const [showDrumLaneForm, setShowDrumLaneForm] = useState(false);
+  const [editingDrumLane, setEditingDrumLane] = useState<number | null>(null);
+  const [newDrumLane, setNewDrumLane] = useState({ trig: '', chan: '', note: '', name: '' });
 
   const handleClose = useCallback(() => {
     setSelectedNode(null);
@@ -67,10 +73,18 @@ export function NodeEditor() {
   const handleTypeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       if (selectedNodeId) {
-        updateNodeData(selectedNodeId, { type: e.target.value as InstrumentType });
+        const newType = e.target.value as InstrumentType;
+        updateNodeData(selectedNodeId, { type: newType });
+        // Auto-populate drum lanes when switching to DRUM
+        if (newType === 'DRUM' && selectedNode) {
+          const nodeData = selectedNode.data as InstrumentNodeData;
+          if (!nodeData.drumLanes || nodeData.drumLanes.length === 0) {
+            updateDrumLanes(selectedNodeId, [...DEFAULT_DRUM_LANES]);
+          }
+        }
       }
     },
-    [selectedNodeId, updateNodeData]
+    [selectedNodeId, selectedNode, updateNodeData, updateDrumLanes]
   );
 
   const handleLocalOffChange = useCallback(
@@ -278,6 +292,94 @@ export function NodeEditor() {
     setNewAutomationLane({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
     setEditingAutomationSlot(null);
     setShowAutomationForm(false);
+  }, []);
+
+  const handleSaveDrumLane = useCallback(() => {
+    if (!selectedNodeId || !selectedNode) return;
+
+    const data = selectedNode.data as InstrumentNodeData;
+    const currentLanes = [...(data.drumLanes || [])];
+
+    const lane: DrumLane = {
+      lane: 0, // set below
+      trig: newDrumLane.trig !== '' ? Math.min(127, Math.max(0, parseInt(newDrumLane.trig) || 0)) : null,
+      chan: newDrumLane.chan || null,
+      note: newDrumLane.note !== '' ? Math.min(127, Math.max(0, parseInt(newDrumLane.note) || 0)) : null,
+      name: newDrumLane.name || 'DRUM',
+    };
+
+    if (editingDrumLane !== null) {
+      const index = currentLanes.findIndex((l) => l.lane === editingDrumLane);
+      if (index !== -1) {
+        currentLanes[index] = { ...lane, lane: currentLanes[index].lane };
+      }
+      updateDrumLanes(selectedNodeId, currentLanes);
+    } else {
+      if (currentLanes.length >= 8) {
+        alert('Maximum 8 drum lanes allowed');
+        return;
+      }
+      lane.lane = currentLanes.length + 1;
+      updateDrumLanes(selectedNodeId, [...currentLanes, lane]);
+    }
+
+    setNewDrumLane({ trig: '', chan: '', note: '', name: '' });
+    setEditingDrumLane(null);
+    setShowDrumLaneForm(false);
+  }, [selectedNodeId, selectedNode, newDrumLane, editingDrumLane, updateDrumLanes]);
+
+  const handleRemoveDrumLane = useCallback(
+    (lane: number) => {
+      if (!selectedNodeId || !selectedNode) return;
+
+      const data = selectedNode.data as InstrumentNodeData;
+      const updated = (data.drumLanes || [])
+        .filter((l) => l.lane !== lane)
+        .map((l, i) => ({ ...l, lane: i + 1 }));
+
+      updateDrumLanes(selectedNodeId, updated);
+    },
+    [selectedNodeId, selectedNode, updateDrumLanes]
+  );
+
+  const handleMoveDrumLane = useCallback(
+    (lane: number, direction: 'up' | 'down') => {
+      if (!selectedNodeId || !selectedNode) return;
+
+      const data = selectedNode.data as InstrumentNodeData;
+      const currentLanes = [...(data.drumLanes || [])];
+      const index = currentLanes.findIndex((l) => l.lane === lane);
+
+      if (direction === 'up' && index > 0) {
+        [currentLanes[index - 1], currentLanes[index]] = [currentLanes[index], currentLanes[index - 1]];
+      } else if (direction === 'down' && index < currentLanes.length - 1) {
+        [currentLanes[index], currentLanes[index + 1]] = [currentLanes[index + 1], currentLanes[index]];
+      }
+
+      const updated = currentLanes.map((l, i) => ({ ...l, lane: i + 1 }));
+      updateDrumLanes(selectedNodeId, updated);
+    },
+    [selectedNodeId, selectedNode, updateDrumLanes]
+  );
+
+  const handleEditDrumLane = useCallback(
+    (lane: DrumLane) => {
+      setNewDrumLane({
+        trig: lane.trig !== null ? String(lane.trig) : '',
+        chan: lane.chan || '',
+        note: lane.note !== null ? String(lane.note) : '',
+        name: lane.name,
+      });
+      setEditingDrumLane(lane.lane);
+      setShowDrumLaneForm(true);
+    },
+    []
+  );
+
+  const handleCancelDrumLaneEdit = useCallback(() => {
+    setNewDrumLane({ trig: '', chan: '', note: '', name: '' });
+    setEditingDrumLane(null);
+    setShowDrumLaneForm(false);
   }, []);
 
   const handleExportSingle = useCallback(() => {
@@ -942,6 +1044,181 @@ export function NodeEditor() {
             ) : (
               <p className="text-xs text-gray-500">
                 No automation lanes. Add up to 64 lanes for Hapax automation routing.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* DRUMLANES Section - only for DRUM type, not Hapax */}
+        {!data.isHapax && data.type === 'DRUM' && (
+          <div className="border-t border-gray-700 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-400">DRUMLANES (1-8)</h3>
+              {(data.drumLanes?.length || 0) < 8 && !showDrumLaneForm && (
+                <button
+                  onClick={() => {
+                    setEditingDrumLane(null);
+                    setNewDrumLane({ trig: '', chan: '', note: '', name: '' });
+                    setShowDrumLaneForm(true);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Add/Edit DRUMLANE form */}
+            {showDrumLaneForm && (
+              <div className="bg-gray-800 rounded-lg p-3 mb-3 space-y-2">
+                <div className="text-xs text-gray-400 font-medium mb-2">
+                  {editingDrumLane !== null ? `Edit Row ${editingDrumLane}` : 'Add New Drum Lane'}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={newDrumLane.name}
+                    onChange={(e) => setNewDrumLane({ ...newDrumLane, name: e.target.value })}
+                    placeholder="e.g., KICK"
+                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Note (0-127)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={127}
+                      value={newDrumLane.note}
+                      onChange={(e) => setNewDrumLane({ ...newDrumLane, note: e.target.value })}
+                      placeholder="NULL"
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">TRIG (0-127)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={127}
+                      value={newDrumLane.trig}
+                      onChange={(e) => setNewDrumLane({ ...newDrumLane, trig: e.target.value })}
+                      placeholder="NULL"
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">CHAN</label>
+                  <select
+                    value={newDrumLane.chan}
+                    onChange={(e) => setNewDrumLane({ ...newDrumLane, chan: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  >
+                    <option value="">NULL</option>
+                    <optgroup label="MIDI Channel">
+                      {Array.from({ length: 16 }, (_, i) => (
+                        <option key={`ch-${i + 1}`} value={String(i + 1)}>{i + 1}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Gate">
+                      {['G1', 'G2', 'G3', 'G4'].map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="CV">
+                      {['CV1', 'CV2', 'CV3', 'CV4'].map(cv => (
+                        <option key={cv} value={cv}>{cv}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="CV Gate">
+                      {['CVG1', 'CVG2', 'CVG3', 'CVG4'].map(cvg => (
+                        <option key={cvg} value={cvg}>{cvg}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveDrumLane}
+                    disabled={!newDrumLane.name}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-1 px-3 rounded text-sm font-medium transition-colors"
+                  >
+                    {editingDrumLane !== null ? 'Save' : 'Add'}
+                  </button>
+                  <button
+                    onClick={handleCancelDrumLaneEdit}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List of drum lanes — sorted descending by lane (Row 8 at top, Row 1 at bottom) */}
+            {data.drumLanes && data.drumLanes.length > 0 ? (
+              <div className="space-y-1">
+                {[...data.drumLanes].sort((a, b) => b.lane - a.lane).map((lane) => {
+                  const ascIndex = data.drumLanes!.findIndex((l) => l.lane === lane.lane);
+                  return (
+                    <div
+                      key={lane.lane}
+                      className="flex items-center justify-between bg-gray-800 rounded px-2 py-1.5 group"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-orange-400 font-mono text-xs w-4 flex-shrink-0">{lane.lane}</span>
+                        {lane.note !== null && (
+                          <span className="text-xs text-gray-500 flex-shrink-0">N:{lane.note}</span>
+                        )}
+                        {(lane.trig !== null || lane.chan) && (
+                          <span className="text-[10px] text-gray-600 flex-shrink-0">
+                            {lane.trig !== null ? `T:${lane.trig}` : ''}{lane.trig !== null && lane.chan ? ' ' : ''}{lane.chan ? `CH:${lane.chan}` : ''}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-300 truncate">{lane.name}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button
+                          onClick={() => handleMoveDrumLane(lane.lane, 'up')}
+                          disabled={ascIndex === 0}
+                          className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed p-0.5 transition-colors"
+                          title="Move up"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleMoveDrumLane(lane.lane, 'down')}
+                          disabled={ascIndex === data.drumLanes!.length - 1}
+                          className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed p-0.5 transition-colors"
+                          title="Move down"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleEditDrumLane(lane)}
+                          className="text-gray-500 hover:text-blue-400 p-0.5 transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveDrumLane(lane.lane)}
+                          className="text-gray-500 hover:text-red-400 p-0.5 transition-colors"
+                          title="Remove"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                No drum lanes. Add up to 8 lanes for Hapax drum mapping.
               </p>
             )}
           </div>

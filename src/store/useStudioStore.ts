@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Node, Connection, XYPosition } from '@xyflow/react';
-import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, AutomationLane, Port } from '../types';
+import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, AutomationLane, DrumLane, Port } from '../types';
 import { HAPAX_PRESET, EDGE_COLORS } from '../data/defaultNodes';
 import { detectCycle } from '../utils/loopDetection';
 
@@ -40,6 +40,7 @@ interface StudioState {
   clearCCMap: (nodeId: string) => void;
   updateAssignCCs: (nodeId: string, assignCCs: AssignCC[]) => void;
   updateAutomationLanes: (nodeId: string, automationLanes: AutomationLane[]) => void;
+  updateDrumLanes: (nodeId: string, drumLanes: DrumLane[]) => void;
 
   // Loop detection
   checkForLoops: () => void;
@@ -321,6 +322,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId ? { ...node, data: { ...node.data, automationLanes } as InstrumentNodeData } : node
+      ),
+    }));
+  },
+
+  updateDrumLanes: (nodeId, drumLanes) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, drumLanes } as InstrumentNodeData } : node
       ),
     }));
   },

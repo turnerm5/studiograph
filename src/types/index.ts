@@ -27,10 +27,11 @@ export interface NRPNMapping {
 export type InstrumentType = 'POLY' | 'DRUM' | 'MPE';
 
 export interface DrumLane {
-  channel: number;      // MIDI channel (1-16)
-  note: number;         // MIDI note number
-  lane: number;         // Lane number for display
-  name: string;         // Name of the drum sound
+  lane: number;         // Row number (1-8), maps to ROW in Hapax export
+  trig: number | null;  // TRIG (0-127) or null
+  chan: string | null;   // CHAN: "1"-"16", "G1"-"G4", "CV1"-"CV4", "CVG1"-"CVG4", or null
+  note: number | null;  // Note number (0-127) or null
+  name: string;         // Drum sound name
 }
 
 export interface AssignCC {

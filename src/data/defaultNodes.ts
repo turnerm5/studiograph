@@ -2,14 +2,26 @@ import type { InstrumentPreset, DrumLane } from '../types';
 
 // Default drum lanes for Digitakt II (8 tracks, Auto-Channel mode)
 export const DIGITAKT_II_DRUM_LANES: DrumLane[] = [
-  { channel: 1, note: 0, lane: 1, name: 'KICK' },
-  { channel: 2, note: 1, lane: 2, name: 'RIM' },
-  { channel: 3, note: 2, lane: 3, name: 'SNARE' },
-  { channel: 4, note: 3, lane: 4, name: 'CLOSED HH' },
-  { channel: 5, note: 4, lane: 5, name: 'OPEN HH' },
-  { channel: 6, note: 5, lane: 6, name: 'CLAP' },
-  { channel: 7, note: 6, lane: 7, name: 'PERC 1' },
-  { channel: 8, note: 7, lane: 8, name: 'PERC 2' },
+  { lane: 1, trig: null, chan: null, note: 0, name: 'KICK' },
+  { lane: 2, trig: null, chan: null, note: 1, name: 'RIM' },
+  { lane: 3, trig: null, chan: null, note: 2, name: 'SNARE' },
+  { lane: 4, trig: null, chan: null, note: 3, name: 'CLOSED HH' },
+  { lane: 5, trig: null, chan: null, note: 4, name: 'OPEN HH' },
+  { lane: 6, trig: null, chan: null, note: 5, name: 'CLAP' },
+  { lane: 7, trig: null, chan: null, note: 6, name: 'PERC 1' },
+  { lane: 8, trig: null, chan: null, note: 7, name: 'PERC 2' },
+];
+
+// Default drum lanes for auto-populating when type switches to DRUM
+export const DEFAULT_DRUM_LANES: DrumLane[] = [
+  { lane: 1, trig: null, chan: null, note: 0, name: 'KICK' },
+  { lane: 2, trig: null, chan: null, note: 1, name: 'RIM' },
+  { lane: 3, trig: null, chan: null, note: 2, name: 'SNARE' },
+  { lane: 4, trig: null, chan: null, note: 3, name: 'CLSD HH' },
+  { lane: 5, trig: null, chan: null, note: 4, name: 'OPEN HH' },
+  { lane: 6, trig: null, chan: null, note: 5, name: 'CLAP' },
+  { lane: 7, trig: null, chan: null, note: 6, name: 'PERC 1' },
+  { lane: 8, trig: null, chan: null, note: 7, name: 'PERC 2' },
 ];
 
 export const HAPAX_PRESET: InstrumentPreset = {
