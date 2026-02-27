@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Node, Connection, XYPosition, NodeChange, EdgeChange } from '@xyflow/react';
 import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, AutomationLane, DrumLane, Port } from '../types';
 import { HAPAX_PRESET, EDGE_COLORS } from '../data/defaultNodes';
@@ -7,6 +8,7 @@ import { detectCycle } from '../utils/loopDetection';
 interface StudioState {
   nodes: Node<InstrumentNodeData>[];
   edges: StudioEdge[];
+  customPresets: InstrumentPreset[];
   selectedNodeId: string | null;
   hasLoop: boolean;
   loopEdges: string[];
@@ -42,14 +44,30 @@ interface StudioState {
   updateAutomationLanes: (nodeId: string, automationLanes: AutomationLane[]) => void;
   updateDrumLanes: (nodeId: string, drumLanes: DrumLane[]) => void;
 
+  // Custom presets
+  setCustomPresets: (presets: InstrumentPreset[]) => void;
+
   // Loop detection
   checkForLoops: () => void;
 
   // Import/Export
-  importStudio: (nodes: Node<InstrumentNodeData>[], edges: StudioEdge[]) => void;
+  importStudio: (nodes: Node<InstrumentNodeData>[], edges: StudioEdge[], customPresets?: InstrumentPreset[]) => void;
+
+  // Reset
+  clearStudio: () => void;
 }
 
 let nodeIdCounter = 0;
+
+function syncNodeIdCounter(nodes: Node<InstrumentNodeData>[]) {
+  nodeIdCounter = nodes.reduce((max, node) => {
+    const match = node.id.match(/^node-(\d+)$/);
+    if (match) {
+      return Math.max(max, parseInt(match[1], 10));
+    }
+    return max;
+  }, 0);
+}
 
 const createInitialHapaxNode = (): Node<InstrumentNodeData> => ({
   id: 'hapax-main',
@@ -71,9 +89,12 @@ const createInitialHapaxNode = (): Node<InstrumentNodeData> => ({
   },
 });
 
-export const useStudioStore = create<StudioState>((set, get) => ({
+export const useStudioStore = create<StudioState>()(
+  persist(
+    (set, get) => ({
   nodes: [createInitialHapaxNode()],
   edges: [],
+  customPresets: [],
   selectedNodeId: null,
   hasLoop: false,
   loopEdges: [],
@@ -340,21 +361,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ hasLoop: hasCycle, loopEdges: cycleEdges });
   },
 
-  importStudio: (nodes, edges) => {
-    // Update nodeIdCounter to prevent ID collisions
-    const maxId = nodes.reduce((max, node) => {
-      const match = node.id.match(/^node-(\d+)$/);
-      if (match) {
-        return Math.max(max, parseInt(match[1], 10));
-      }
-      return max;
-    }, 0);
-    nodeIdCounter = maxId;
+  setCustomPresets: (presets) => {
+    set({ customPresets: presets });
+  },
+
+  importStudio: (nodes, edges, customPresets) => {
+    syncNodeIdCounter(nodes);
 
     // Replace state
     set({
       nodes,
       edges,
+      customPresets: customPresets ?? get().customPresets,
       selectedNodeId: null,
       hasLoop: false,
       loopEdges: [],
@@ -363,4 +381,32 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     // Re-run loop detection
     get().checkForLoops();
   },
-}));
+
+  clearStudio: () => {
+    nodeIdCounter = 0;
+    set({
+      nodes: [createInitialHapaxNode()],
+      edges: [],
+      customPresets: [],
+      selectedNodeId: null,
+      hasLoop: false,
+      loopEdges: [],
+    });
+  },
+}),
+    {
+      name: 'studiograph-studio',
+      partialize: (state) => ({
+        nodes: state.nodes,
+        edges: state.edges,
+        customPresets: state.customPresets,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          syncNodeIdCounter(state.nodes);
+          state.checkForLoops();
+        }
+      },
+    },
+  ),
+);
