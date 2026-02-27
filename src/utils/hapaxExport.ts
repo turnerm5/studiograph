@@ -1,6 +1,7 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { InstrumentNodeData, HapaxDefinition, AutomationLane } from '../types';
 import { groupBySection, groupNRPNBySection } from './csvParser';
+import { traceHapaxRouting } from './hapaxRouting';
 
 interface ConnectedInstrument {
   node: Node<InstrumentNodeData>;
@@ -38,19 +39,40 @@ export function findConnectedInstruments(
 
   const raw: ConnectedInstrument[] = [];
 
-  // Find edges originating from Hapax outputs
+  // Use BFS trace to find all MIDI-reachable nodes (direct + downstream)
+  const routing = traceHapaxRouting(nodes, edges);
+
+  for (const [nodeId, handles] of routing) {
+    const targetNode = nodes.find((n) => n.id === nodeId);
+    if (!targetNode) continue;
+    const targetData = targetNode.data as InstrumentNodeData;
+    if (targetData.isHapax) continue;
+
+    for (const handle of handles) {
+      const portInfo = HAPAX_PORT_MAP[handle];
+      if (!portInfo) continue;
+      raw.push({ node: targetNode, hapaxPort: portInfo.outPort, isAnalog: portInfo.isAnalog });
+    }
+  }
+
+  // Also add direct CV/Gate connections (these are always direct from Hapax)
   for (const edge of edges) {
     if (edge.source !== hapaxNode.id) continue;
-
     const sourceHandle = edge.sourceHandle || '';
     const portInfo = HAPAX_PORT_MAP[sourceHandle];
-    if (!portInfo) continue;
+    if (!portInfo || !portInfo.isAnalog) continue;
 
     const targetNode = nodes.find((n) => n.id === edge.target);
     if (targetNode) {
       const targetData = targetNode.data as InstrumentNodeData;
       if (!targetData.isHapax) {
-        raw.push({ node: targetNode, hapaxPort: portInfo.outPort, isAnalog: portInfo.isAnalog });
+        // Only add if not already present from BFS (BFS only follows MIDI/USB)
+        const alreadyHas = raw.some(
+          (r) => r.node.id === targetNode.id && r.hapaxPort === portInfo.outPort
+        );
+        if (!alreadyHas) {
+          raw.push({ node: targetNode, hapaxPort: portInfo.outPort, isAnalog: true });
+        }
       }
     }
   }

@@ -10,6 +10,7 @@ import {
 import type { InstrumentNodeData, Port, PortType } from '../../types';
 import { PORT_COLORS } from '../../data/defaultNodes';
 import { useStudioStore } from '../../store/useStudioStore';
+import { traceHapaxRouting } from '../../utils/hapaxRouting';
 
 // Map icon IDs to components
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -48,20 +49,18 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
   const selected = selectedNodeId === id;
   const nodeData = data as InstrumentNodeData;
 
-  // Find ALL Hapax connections for this node
-  const hapaxNode = nodes.find((n) => (n.data as InstrumentNodeData).isHapax);
+  // Find ALL Hapax connections for this node (including multi-hop chains)
   const hapaxHandleLabels: Record<string, string> = {
     'midi-a': 'A', 'midi-b': 'B', 'midi-c': 'C', 'midi-d': 'D',
     'usb-host': 'USB-H', 'usb-device': 'USB-D',
     'cv-1': 'CV1', 'cv-2': 'CV2', 'cv-3': 'CV3', 'cv-4': 'CV4',
     'gate-1': 'G1', 'gate-2': 'G2', 'gate-3': 'G3', 'gate-4': 'G4',
   };
-  const hapaxEdges = hapaxNode
-    ? edges.filter((e) => e.source === hapaxNode.id && e.target === id)
-    : [];
-  const hapaxPort = hapaxEdges.length > 0
-    ? hapaxEdges
-        .map((e) => hapaxHandleLabels[e.sourceHandle || ''])
+  const hapaxRouting = traceHapaxRouting(nodes, edges);
+  const hapaxHandles = hapaxRouting.get(id) || [];
+  const hapaxPort = hapaxHandles.length > 0
+    ? hapaxHandles
+        .map((h) => hapaxHandleLabels[h])
         .filter(Boolean)
         .join(', ')
     : null;
