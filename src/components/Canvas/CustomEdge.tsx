@@ -14,10 +14,10 @@ export function CustomEdge({
   // Calculate a stable offset based on source handle to prevent overlap
   // Use sourceHandleId to determine offset - each handle gets its own level
   const handleOffset = sourceHandleId ?
-    (sourceHandleId.charCodeAt(sourceHandleId.length - 1) % 10) * 15 : 0;
+    (sourceHandleId.charCodeAt(sourceHandleId.length - 1) % 10) * 8 : 0;
 
   // Minimum distance to travel up before going horizontal (since handles are on top)
-  const minVerticalDistance = 50;
+  const minVerticalDistance = 25;
 
   // Calculate the Y position for the horizontal segment
   const minY = Math.min(sourceY, targetY);
