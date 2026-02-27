@@ -14,7 +14,7 @@ const HAPAX_PORT_MAP: Record<string, { outPort: string; isAnalog: boolean }> = {
   'midi-c': { outPort: 'C', isAnalog: false },
   'midi-d': { outPort: 'D', isAnalog: false },
   'usb-host': { outPort: 'USBH', isAnalog: false },
-  'usb-device-out': { outPort: 'USBD', isAnalog: false },
+  'usb-device': { outPort: 'USBD', isAnalog: false },
   'cv-1': { outPort: 'CV1', isAnalog: true },
   'cv-2': { outPort: 'CV2', isAnalog: true },
   'cv-3': { outPort: 'CV3', isAnalog: true },

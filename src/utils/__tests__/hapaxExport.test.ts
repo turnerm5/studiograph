@@ -122,9 +122,9 @@ describe('findConnectedInstruments', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('maps usb-device-out to port USBD', () => {
+  it('maps usb-device to port USBD', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-device-out')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-device')];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(1);
     expect(result[0].hapaxPort).toBe('USBD');

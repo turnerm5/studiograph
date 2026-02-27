@@ -52,7 +52,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
   const hapaxNode = nodes.find((n) => (n.data as InstrumentNodeData).isHapax);
   const hapaxHandleLabels: Record<string, string> = {
     'midi-a': 'A', 'midi-b': 'B', 'midi-c': 'C', 'midi-d': 'D',
-    'usb-host': 'USB-H', 'usb-device-out': 'USB-D',
+    'usb-host': 'USB-H', 'usb-device': 'USB-D',
     'cv-1': 'CV1', 'cv-2': 'CV2', 'cv-3': 'CV3', 'cv-4': 'CV4',
     'gate-1': 'G1', 'gate-2': 'G2', 'gate-3': 'G3', 'gate-4': 'G4',
   };
@@ -349,13 +349,13 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
         {nodeData.inputs.some(p => p.type === 'usb') && (
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-            <span>USB In</span>
+            <span>USB Device</span>
           </div>
         )}
         {nodeData.outputs.some(p => p.type === 'usb') && (
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-cyan-300"></span>
-            <span>USB Out</span>
+            <span>USB Host</span>
           </div>
         )}
       </div>

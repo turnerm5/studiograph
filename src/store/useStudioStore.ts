@@ -404,27 +404,122 @@ export const useStudioStore = create<StudioState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           syncNodeIdCounter(state.nodes);
-          // Backfill missing Hapax output ports from older persisted state
           let needsMigration = false;
+
+          // Migrate nodes
           const migratedNodes = state.nodes.map((node) => {
             const data = node.data as InstrumentNodeData;
-            if (!data.isHapax) return node;
-            const outputIds = new Set(data.outputs.map(p => p.id));
-            if (outputIds.has('usb-device-out') && outputIds.has('midi-d')) return node;
-            needsMigration = true;
-            const newOutputs = [...data.outputs];
-            if (!outputIds.has('midi-d')) {
-              const idx = newOutputs.findIndex(p => p.id === 'midi-c');
-              if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'midi-d', label: 'MIDI D', type: 'midi' });
+
+            if (data.isHapax) {
+              const outputIds = new Set(data.outputs.map(p => p.id));
+              let newOutputs = [...data.outputs];
+              let newInputs = [...data.inputs];
+
+              // Backfill midi-d
+              if (!outputIds.has('midi-d')) {
+                needsMigration = true;
+                const idx = newOutputs.findIndex(p => p.id === 'midi-c');
+                if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'midi-d', label: 'MIDI D', type: 'midi' });
+              }
+
+              // USB redesign: remove usb-device input
+              if (newInputs.some(p => p.id === 'usb-device')) {
+                needsMigration = true;
+                newInputs = newInputs.filter(p => p.id !== 'usb-device');
+              }
+
+              // Rename usb-device-out → usb-device in outputs
+              const usbDeviceOutIdx = newOutputs.findIndex(p => p.id === 'usb-device-out');
+              if (usbDeviceOutIdx !== -1) {
+                needsMigration = true;
+                newOutputs[usbDeviceOutIdx] = { id: 'usb-device', label: 'USB Device', type: 'usb' };
+              }
+
+              // Backfill usb-device output if missing
+              const updatedOutputIds = new Set(newOutputs.map(p => p.id));
+              if (!updatedOutputIds.has('usb-device')) {
+                needsMigration = true;
+                const idx = newOutputs.findIndex(p => p.id === 'usb-host');
+                if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'usb-device', label: 'USB Device', type: 'usb' });
+              }
+
+              if (needsMigration) {
+                return { ...node, data: { ...data, inputs: newInputs, outputs: newOutputs } };
+              }
+              return node;
             }
-            if (!outputIds.has('usb-device-out')) {
-              const idx = newOutputs.findIndex(p => p.id === 'usb-host');
-              if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'usb-device-out', label: 'USB Device', type: 'usb' });
+
+            // Instrument nodes: rename usb-in-N → usb-device-N, usb-out-N → usb-host-N
+            let nodeChanged = false;
+            const newInputs = data.inputs.map((p) => {
+              const match = p.id.match(/^usb-in-(\d+)$/);
+              if (match) { nodeChanged = true; return { ...p, id: `usb-device-${match[1]}`, label: p.label.replace('USB In', 'USB Device') }; }
+              return p;
+            });
+            const newOutputs = data.outputs.map((p) => {
+              const match = p.id.match(/^usb-out-(\d+)$/);
+              if (match) { nodeChanged = true; return { ...p, id: `usb-host-${match[1]}`, label: p.label.replace('USB Out', 'USB Host') }; }
+              return p;
+            });
+            if (nodeChanged) {
+              needsMigration = true;
+              return { ...node, data: { ...data, inputs: newInputs, outputs: newOutputs } };
             }
-            return { ...node, data: { ...data, outputs: newOutputs } };
+            return node;
           });
+
+          // Migrate edges
+          const hapaxId = migratedNodes.find(n => (n.data as InstrumentNodeData).isHapax)?.id;
+          let migratedEdges = state.edges.map((edge) => {
+            let { sourceHandle, targetHandle } = edge;
+            let changed = false;
+
+            if (sourceHandle === 'usb-device-out') { sourceHandle = 'usb-device'; changed = true; }
+            if (sourceHandle && /^usb-out-\d+$/.test(sourceHandle)) {
+              sourceHandle = sourceHandle.replace('usb-out-', 'usb-host-');
+              changed = true;
+            }
+            if (targetHandle && /^usb-in-\d+$/.test(targetHandle)) {
+              targetHandle = targetHandle.replace('usb-in-', 'usb-device-');
+              changed = true;
+            }
+
+            if (!changed) return edge;
+            needsMigration = true;
+            return {
+              ...edge,
+              sourceHandle,
+              targetHandle,
+              id: `edge-${edge.source}-${sourceHandle}-${edge.target}-${targetHandle}`,
+            };
+          });
+
+          // Remove edges targeting deleted Hapax usb-device input
+          if (hapaxId) {
+            const before = migratedEdges.length;
+            migratedEdges = migratedEdges.filter(e => !(e.target === hapaxId && e.targetHandle === 'usb-device'));
+            if (migratedEdges.length !== before) needsMigration = true;
+          }
+
+          // Migrate custom presets
+          const migratedPresets = (state.customPresets || []).map((preset) => {
+            let changed = false;
+            const inputs = preset.inputs.map((p) => {
+              const match = p.id.match(/^usb-in-(\d+)$/);
+              if (match) { changed = true; return { ...p, id: `usb-device-${match[1]}`, label: p.label.replace('USB In', 'USB Device') }; }
+              return p;
+            });
+            const outputs = preset.outputs.map((p) => {
+              const match = p.id.match(/^usb-out-(\d+)$/);
+              if (match) { changed = true; return { ...p, id: `usb-host-${match[1]}`, label: p.label.replace('USB Out', 'USB Host') }; }
+              return p;
+            });
+            if (changed) { needsMigration = true; return { ...preset, inputs, outputs }; }
+            return preset;
+          });
+
           if (needsMigration) {
-            useStudioStore.setState({ nodes: migratedNodes });
+            useStudioStore.setState({ nodes: migratedNodes, edges: migratedEdges, customPresets: migratedPresets });
           }
           state.checkForLoops();
         }
