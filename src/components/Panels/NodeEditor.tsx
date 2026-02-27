@@ -385,7 +385,7 @@ export function NodeEditor() {
   const handleExportSingle = useCallback(() => {
     if (!selectedNodeId) return;
 
-    const definitions = generateAllDefinitions(nodes as any, edges);
+    const definitions = generateAllDefinitions(nodes, edges);
 
     // Find definition for this specific node by ID
     const def = definitions.find((d) => d.nodeId === selectedNodeId);

@@ -7,6 +7,7 @@ import {
   type OnConnect,
   type NodeTypes,
   type EdgeTypes,
+  type Node,
   useReactFlow,
   ReactFlowProvider,
 } from '@xyflow/react';
@@ -17,9 +18,8 @@ import { InstrumentNode } from '../Nodes/InstrumentNode';
 import { CustomEdge } from './CustomEdge';
 import type { InstrumentPreset, InstrumentNodeData } from '../../types';
 
-const nodeTypes: NodeTypes = {
-  instrument: InstrumentNode as any,
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ReactFlow NodeTypes variance requires this cast
+const nodeTypes: NodeTypes = { instrument: InstrumentNode as any };
 
 const edgeTypes: EdgeTypes = {
   custom: CustomEdge,
@@ -44,7 +44,7 @@ function StudioCanvasInner() {
 
   // Validate connection: check port types match
   const isValidConnection = useCallback(
-    (connection: Connection) => {
+    (connection: Pick<Connection, 'source' | 'target'> & { sourceHandle?: string | null; targetHandle?: string | null }) => {
       const { source, target, sourceHandle, targetHandle } = connection;
       if (!source || !target || !sourceHandle || !targetHandle) return false;
 
@@ -142,12 +142,12 @@ function StudioCanvasInner() {
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
-        nodes={nodes as any}
+        nodes={nodes as Node[]}
         edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        isValidConnection={isValidConnection as any}
+        isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onDragOver={onDragOver}

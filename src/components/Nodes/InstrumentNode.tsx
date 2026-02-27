@@ -36,6 +36,11 @@ const getIconComponent = (iconId: string | undefined): LucideIcon => {
   return ICON_MAP[iconId || 'music'] || Music;
 };
 
+function renderIcon(iconId: string | undefined, size: number, className: string) {
+  const Icon = getIconComponent(iconId);
+  return <Icon size={size} className={className} />;
+}
+
 type InstrumentNodeType = Node<InstrumentNodeData>;
 
 function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
@@ -231,13 +236,10 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
         ${nodeData.isHapax ? 'bg-purple-900/50' : 'bg-gray-700/50'}
       `}>
         <div className="flex items-center gap-2">
-          {(() => {
-            if (nodeData.isHapax) {
-              return <Cpu size={18} className="text-purple-400" />;
-            }
-            const IconComponent = getIconComponent(nodeData.iconId);
-            return <IconComponent size={16} className="text-blue-400" />;
-          })()}
+          {nodeData.isHapax
+            ? <Cpu size={18} className="text-purple-400" />
+            : renderIcon(nodeData.iconId, 16, "text-blue-400")
+          }
           <div>
             <div className={`font-semibold text-white ${nodeData.isHapax ? 'text-base' : 'text-sm'}`}>
               {nodeData.name}

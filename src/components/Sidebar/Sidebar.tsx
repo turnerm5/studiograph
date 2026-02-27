@@ -39,6 +39,11 @@ const getIconComponent = (iconId: string | undefined): LucideIcon => {
   return found?.icon || Music;
 };
 
+function renderIcon(iconId: string | undefined, size: number, className: string) {
+  const Icon = getIconComponent(iconId);
+  return <Icon size={size} className={className} />;
+}
+
 interface InstrumentCardProps {
   preset: InstrumentPreset;
   isCustom?: boolean;
@@ -88,10 +93,7 @@ function InstrumentCard({ preset, isCustom, onEdit, onDelete }: InstrumentCardPr
         )}
       </div>
       <div className="flex items-center gap-2">
-        {(() => {
-          const IconComponent = getIconComponent(preset.iconId);
-          return <IconComponent size={18} className="text-blue-400" />;
-        })()}
+        {renderIcon(preset.iconId, 18, "text-blue-400")}
         <div>
           <div className="text-sm font-medium text-white">{preset.name}</div>
           <div className="text-xs text-gray-400">{preset.manufacturer}</div>
@@ -431,7 +433,7 @@ export function Sidebar() {
   const { nodes, edges, importStudio, updateNodePortsAndCleanEdges, updateNodeData, uploadCCMap, clearCCMap } = useStudioStore();
 
   const handleExport = useCallback(() => {
-    exportStudio(nodes as any, edges, customPresets);
+    exportStudio(nodes, edges, customPresets);
   }, [nodes, edges, customPresets]);
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

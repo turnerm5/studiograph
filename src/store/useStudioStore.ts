@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Node, Connection, XYPosition } from '@xyflow/react';
+import type { Node, Connection, XYPosition, NodeChange, EdgeChange } from '@xyflow/react';
 import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, AutomationLane, DrumLane, Port } from '../types';
 import { HAPAX_PRESET, EDGE_COLORS } from '../data/defaultNodes';
 import { detectCycle } from '../utils/loopDetection';
@@ -25,12 +25,12 @@ interface StudioState {
   updateNodeData: (id: string, data: Partial<InstrumentNodeData>) => void;
   updateNodeWidth: (id: string, width: number) => void;
   setSelectedNode: (id: string | null) => void;
-  onNodesChange: (changes: any) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
 
   // Edge actions
   addEdge: (connection: Connection, portType: PortType) => void;
   removeEdge: (id: string) => void;
-  onEdgesChange: (changes: any) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
 
   // Port updates
   updateNodePortsAndCleanEdges: (nodeId: string, inputs: Port[], outputs: Port[]) => void;
@@ -336,7 +336,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   checkForLoops: () => {
     const { nodes, edges } = get();
-    const { hasCycle, cycleEdges } = detectCycle(nodes as any, edges);
+    const { hasCycle, cycleEdges } = detectCycle(nodes, edges);
     set({ hasLoop: hasCycle, loopEdges: cycleEdges });
   },
 

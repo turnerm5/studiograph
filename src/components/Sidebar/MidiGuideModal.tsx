@@ -59,7 +59,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     if (isOpen && manufacturers.length === 0) {
       loadManufacturers();
     }
-  }, [isOpen]);
+  }, [isOpen, manufacturers.length]);
 
   // Reset when closed
   useEffect(() => {
@@ -84,7 +84,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     try {
       const data = await fetchManufacturers();
       setManufacturers(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load manufacturers. Check your internet connection.');
     } finally {
       setLoading(false);
@@ -100,7 +100,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setSelectedManufacturer(manufacturer);
       setStep('devices');
       setSearchQuery('');
-    } catch (err) {
+    } catch {
       setError(`Failed to load devices for ${manufacturer.name}.`);
     } finally {
       setLoading(false);
@@ -119,7 +119,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       });
       setSelectedDevice(device);
       setStep('preview');
-    } catch (err) {
+    } catch {
       setError(`Failed to load data for ${device.name}.`);
     } finally {
       setLoading(false);
