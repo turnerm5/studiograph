@@ -62,6 +62,8 @@ function InstrumentCard({ preset, isCustom, onEdit, onDelete }: InstrumentCardPr
   const midiThrus = preset.outputs.filter(p => p.type === 'midi' && p.id.includes('thru')).length;
   const audioInputs = preset.inputs.filter(p => p.type === 'audio').length;
   const audioOutputs = preset.outputs.filter(p => p.type === 'audio').length;
+  const usbDevice = preset.inputs.filter(p => p.type === 'usb').length;
+  const usbHost = preset.outputs.filter(p => p.type === 'usb').length;
 
   return (
     <div
@@ -125,6 +127,16 @@ function InstrumentCard({ preset, isCustom, onEdit, onDelete }: InstrumentCardPr
             {audioOutputs} Audio Out
           </span>
         )}
+        {usbDevice > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">
+            USB Device
+          </span>
+        )}
+        {usbHost > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">
+            USB Host
+          </span>
+        )}
       </div>
     </div>
   );
@@ -148,6 +160,21 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
   const [audioOut, setAudioOut] = useState(initialPreset?.outputs.filter(p => p.type === 'audio').length || 2);
   const [cvIn, setCvIn] = useState(initialPreset?.inputs.filter(p => p.type === 'cv').length || 0);
   const [cvOut, setCvOut] = useState(initialPreset?.outputs.filter(p => p.type === 'cv').length || 0);
+  const [usbCount, setUsbCount] = useState(
+    () => {
+      if (!initialPreset) return 0;
+      const devCount = initialPreset.inputs.filter(p => p.type === 'usb').length;
+      const hostCount = initialPreset.outputs.filter(p => p.type === 'usb').length;
+      return devCount + hostCount;
+    }
+  );
+  const [usbMode, setUsbMode] = useState<'host' | 'device'>(
+    () => {
+      if (!initialPreset) return 'device';
+      const hostCount = initialPreset.outputs.filter(p => p.type === 'usb').length;
+      return hostCount > 0 ? 'host' : 'device';
+    }
+  );
   const [ccMap, setCcMap] = useState<CCMapping[]>(initialPreset?.ccMap || []);
   const [nrpnMap, setNrpnMap] = useState<NRPNMapping[]>(initialPreset?.nrpnMap || []);
   const ccFileInputRef = useRef<HTMLInputElement>(null);
@@ -247,6 +274,25 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
         label: cvOut === 1 ? 'CV Out' : `CV Out ${i + 1}`,
         type: 'cv' as PortType,
       });
+    }
+
+    // Add USB ports — Device mode → inputs, Host mode → outputs
+    if (usbMode === 'device') {
+      for (let i = 0; i < usbCount; i++) {
+        inputs.push({
+          id: `usb-device-${i + 1}`,
+          label: usbCount === 1 ? 'USB Device' : `USB Device ${i + 1}`,
+          type: 'usb' as PortType,
+        });
+      }
+    } else {
+      for (let i = 0; i < usbCount; i++) {
+        outputs.push({
+          id: `usb-host-${i + 1}`,
+          label: usbCount === 1 ? 'USB Host' : `USB Host ${i + 1}`,
+          type: 'usb' as PortType,
+        });
+      }
     }
 
     const preset: InstrumentPreset = {
@@ -416,6 +462,36 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
                   className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
                 />
               </div>
+            </div>
+          </div>
+          {/* USB Ports */}
+          <div className="bg-gray-900 rounded-lg p-2.5">
+            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">USB Ports</h4>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">USB Ports</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={2}
+                  value={usbCount}
+                  onChange={(e) => setUsbCount(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              {usbCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-gray-400">USB Role</label>
+                  <select
+                    value={usbMode}
+                    onChange={(e) => setUsbMode(e.target.value as 'host' | 'device')}
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  >
+                    <option value="device">Device</option>
+                    <option value="host">Host</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -725,6 +801,14 @@ export function Sidebar() {
           <div className="flex items-center gap-1">
             <span className="w-3 h-0.5 bg-red-500"></span>
             <span className="text-gray-400">Audio</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-yellow-500"></span>
+            <span className="text-gray-400">CV</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-cyan-500"></span>
+            <span className="text-gray-400">USB</span>
           </div>
         </div>
       </div>

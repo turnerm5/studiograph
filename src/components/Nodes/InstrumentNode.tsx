@@ -7,9 +7,10 @@ import {
   Volume2, Headphones, Cable, Zap,
   type LucideIcon
 } from 'lucide-react';
-import type { InstrumentNodeData, Port } from '../../types';
+import type { InstrumentNodeData, Port, PortType } from '../../types';
 import { PORT_COLORS } from '../../data/defaultNodes';
 import { useStudioStore } from '../../store/useStudioStore';
+import { traceHapaxRouting } from '../../utils/hapaxRouting';
 
 // Map icon IDs to components
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -48,15 +49,20 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
   const selected = selectedNodeId === id;
   const nodeData = data as InstrumentNodeData;
 
-  // Find Hapax connection for this node
-  const hapaxNode = nodes.find((n) => (n.data as InstrumentNodeData).isHapax);
-  const hapaxEdge = hapaxNode
-    ? edges.find((e) => e.source === hapaxNode.id && e.target === id)
-    : undefined;
-  const hapaxPort = hapaxEdge?.sourceHandle === 'midi-a' ? 'A'
-    : hapaxEdge?.sourceHandle === 'midi-b' ? 'B'
-    : hapaxEdge?.sourceHandle === 'midi-c' ? 'C'
-    : hapaxEdge?.sourceHandle === 'usb-host' ? 'USB'
+  // Find ALL Hapax connections for this node (including multi-hop chains)
+  const hapaxHandleLabels: Record<string, string> = {
+    'midi-a': 'A', 'midi-b': 'B', 'midi-c': 'C', 'midi-d': 'D',
+    'usb-host': 'USB-H', 'usb-device': 'USB-D',
+    'cv-1': 'CV1', 'cv-2': 'CV2', 'cv-3': 'CV3', 'cv-4': 'CV4',
+    'gate-1': 'G1', 'gate-2': 'G2', 'gate-3': 'G3', 'gate-4': 'G4',
+  };
+  const hapaxRouting = traceHapaxRouting(nodes, edges);
+  const hapaxHandles = hapaxRouting.get(id) || [];
+  const hapaxPort = hapaxHandles.length > 0
+    ? hapaxHandles
+        .map((h) => hapaxHandleLabels[h])
+        .filter(Boolean)
+        .join(', ')
     : null;
   const nodeRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +78,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
     }
   };
 
-  const getHandleColor = (type: 'midi' | 'audio' | 'cv', direction: 'input' | 'output') => {
+  const getHandleColor = (type: PortType, direction: 'input' | 'output') => {
     return PORT_COLORS[type]?.[direction] || PORT_COLORS.midi.input;
   };
 
@@ -337,6 +343,18 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-purple-500"></span>
             <span>CV Out</span>
+          </div>
+        )}
+        {nodeData.inputs.some(p => p.type === 'usb') && (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
+            <span>USB Device</span>
+          </div>
+        )}
+        {nodeData.outputs.some(p => p.type === 'usb') && (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-cyan-300"></span>
+            <span>USB Host</span>
           </div>
         )}
       </div>

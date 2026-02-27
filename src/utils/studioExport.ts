@@ -79,15 +79,99 @@ export function parseStudioData(json: string): StudioExport {
       }));
     }
 
+    // Backfill missing Hapax output ports for older save files
+    if (nodeData.isHapax) {
+      const outputIds = new Set(nodeData.outputs.map((p) => p.id));
+      if (!outputIds.has('midi-d')) {
+        const idx = nodeData.outputs.findIndex((p) => p.id === 'midi-c');
+        if (idx !== -1) nodeData.outputs.splice(idx + 1, 0, { id: 'midi-d', label: 'MIDI D', type: 'midi' });
+      }
+
+      // USB redesign: remove usb-device input, rename usb-device-out → usb-device in outputs
+      nodeData.inputs = nodeData.inputs.filter((p) => p.id !== 'usb-device');
+      const usbDeviceOutIdx = nodeData.outputs.findIndex((p) => p.id === 'usb-device-out');
+      if (usbDeviceOutIdx !== -1) {
+        nodeData.outputs[usbDeviceOutIdx] = { id: 'usb-device', label: 'USB Device', type: 'usb' };
+      }
+      // Backfill usb-device output if neither usb-device nor usb-device-out exists
+      const updatedOutputIds = new Set(nodeData.outputs.map((p) => p.id));
+      if (!updatedOutputIds.has('usb-device')) {
+        const idx = nodeData.outputs.findIndex((p) => p.id === 'usb-host');
+        if (idx !== -1) nodeData.outputs.splice(idx + 1, 0, { id: 'usb-device', label: 'USB Device', type: 'usb' });
+      }
+    } else {
+      // Instrument nodes: rename usb-in-N → usb-device-N, usb-out-N → usb-host-N
+      nodeData.inputs = nodeData.inputs.map((p) => {
+        const match = p.id.match(/^usb-in-(\d+)$/);
+        if (match) return { ...p, id: `usb-device-${match[1]}`, label: p.label.replace('USB In', 'USB Device') };
+        return p;
+      });
+      nodeData.outputs = nodeData.outputs.map((p) => {
+        const match = p.id.match(/^usb-out-(\d+)$/);
+        if (match) return { ...p, id: `usb-host-${match[1]}`, label: p.label.replace('USB Out', 'USB Host') };
+        return p;
+      });
+    }
+
     return { ...node, data: nodeData };
+  });
+
+  // Migrate edges: rename USB handles and rebuild IDs
+  let edges = (data.edges as StudioEdge[]).map((edge) => {
+    let { sourceHandle, targetHandle } = edge;
+    let changed = false;
+
+    // Rename usb-device-out → usb-device (Hapax output)
+    if (sourceHandle === 'usb-device-out') { sourceHandle = 'usb-device'; changed = true; }
+    // Rename usb-out-N → usb-host-N (instrument output)
+    if (sourceHandle && /^usb-out-\d+$/.test(sourceHandle)) {
+      sourceHandle = sourceHandle.replace('usb-out-', 'usb-host-');
+      changed = true;
+    }
+    // Rename usb-in-N → usb-device-N (instrument input)
+    if (targetHandle && /^usb-in-\d+$/.test(targetHandle)) {
+      targetHandle = targetHandle.replace('usb-in-', 'usb-device-');
+      changed = true;
+    }
+
+    if (!changed) return edge;
+
+    return {
+      ...edge,
+      sourceHandle,
+      targetHandle,
+      id: `edge-${edge.source}-${sourceHandle}-${edge.target}-${targetHandle}`,
+    };
+  });
+
+  // Remove edges that targeted the deleted Hapax usb-device input
+  const hapaxId = nodes.find((n) => (n.data as InstrumentNodeData).isHapax)?.id;
+  if (hapaxId) {
+    edges = edges.filter((e) => !(e.target === hapaxId && e.targetHandle === 'usb-device'));
+  }
+
+  // Migrate custom presets: same port ID renames as instrument nodes
+  const migratedPresets = customPresets.map((preset: InstrumentPreset) => {
+    let changed = false;
+    const inputs = preset.inputs.map((p) => {
+      const match = p.id.match(/^usb-in-(\d+)$/);
+      if (match) { changed = true; return { ...p, id: `usb-device-${match[1]}`, label: p.label.replace('USB In', 'USB Device') }; }
+      return p;
+    });
+    const outputs = preset.outputs.map((p) => {
+      const match = p.id.match(/^usb-out-(\d+)$/);
+      if (match) { changed = true; return { ...p, id: `usb-host-${match[1]}`, label: p.label.replace('USB Out', 'USB Host') }; }
+      return p;
+    });
+    return changed ? { ...preset, inputs, outputs } : preset;
   });
 
   return {
     version: data.version,
     exportedAt: data.exportedAt || '',
     nodes,
-    edges: data.edges,
-    customPresets,
+    edges,
+    customPresets: migratedPresets,
   };
 }
 

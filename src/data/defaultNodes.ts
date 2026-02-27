@@ -22,7 +22,6 @@ export const HAPAX_PRESET: InstrumentPreset = {
   inputs: [
     { id: 'midi-in-1', label: 'MIDI In 1', type: 'midi' },
     { id: 'midi-in-2', label: 'MIDI In 2', type: 'midi' },
-    { id: 'usb-device', label: 'USB Device', type: 'midi' },
     { id: 'cv-in-1', label: 'CV In 1', type: 'cv' },
     { id: 'cv-in-2', label: 'CV In 2', type: 'cv' },
   ],
@@ -30,7 +29,9 @@ export const HAPAX_PRESET: InstrumentPreset = {
     { id: 'midi-a', label: 'MIDI A', type: 'midi' },
     { id: 'midi-b', label: 'MIDI B', type: 'midi' },
     { id: 'midi-c', label: 'MIDI C', type: 'midi' },
-    { id: 'usb-host', label: 'USB Host', type: 'midi' },
+    { id: 'midi-d', label: 'MIDI D', type: 'midi' },
+    { id: 'usb-host', label: 'USB Host', type: 'usb' },
+    { id: 'usb-device', label: 'USB Device', type: 'usb' },
     { id: 'cv-1', label: 'CV 1', type: 'cv' },
     { id: 'cv-2', label: 'CV 2', type: 'cv' },
     { id: 'cv-3', label: 'CV 3', type: 'cv' },
@@ -56,6 +57,10 @@ export const PORT_COLORS = {
     input: { bg: '#eab308', border: '#ca8a04' },   // Yellow for CV input
     output: { bg: '#a855f7', border: '#9333ea' },  // Purple for CV output
   },
+  usb: {
+    input: { bg: '#06b6d4', border: '#0891b2' },   // Cyan for USB input
+    output: { bg: '#22d3ee', border: '#06b6d4' },  // Cyan for USB output
+  },
 };
 
 // Edge colors by type
@@ -63,4 +68,5 @@ export const EDGE_COLORS = {
   midi: '#3b82f6',  // Blue
   audio: '#ef4444', // Red
   cv: '#eab308',    // Yellow
+  usb: '#06b6d4',   // Cyan
 };
