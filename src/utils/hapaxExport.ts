@@ -1,5 +1,5 @@
 import type { Node, Edge } from '@xyflow/react';
-import type { InstrumentNodeData, HapaxDefinition } from '../types';
+import type { InstrumentNodeData, HapaxDefinition, AutomationLane } from '../types';
 import { groupBySection, groupNRPNBySection } from './csvParser';
 
 interface ConnectedInstrument {
@@ -44,6 +44,21 @@ export function findConnectedInstruments(
   }
 
   return connected;
+}
+
+function formatAutomationLane(lane: AutomationLane): string {
+  switch (lane.type) {
+    case 'CC':
+      return `CC:${lane.ccNumber ?? 0}`;
+    case 'PB':
+      return 'PB:';
+    case 'AT':
+      return 'AT:';
+    case 'CV':
+      return `CV:${lane.cvNumber ?? 1}`;
+    case 'NRPN':
+      return `NRPN:${lane.nrpnMsb ?? 0}:${lane.nrpnLsb ?? 0}:${lane.nrpnDepth ?? 7}`;
+  }
 }
 
 // Generate a single Hapax definition file content
@@ -121,8 +136,13 @@ export function generateHapaxDefinition(definition: HapaxDefinition): string {
   lines.push('[/ASSIGN]');
   lines.push('');
 
-  // AUTOMATION section (empty for now)
+  // AUTOMATION section
   lines.push('[AUTOMATION]');
+  if (definition.automationLanes && definition.automationLanes.length > 0) {
+    for (const lane of definition.automationLanes) {
+      lines.push(formatAutomationLane(lane));
+    }
+  }
   lines.push('[/AUTOMATION]');
   lines.push('');
 
@@ -159,6 +179,7 @@ export function generateAllDefinitions(
       ccMappings: data.ccMap,
       nrpnMappings: data.nrpnMap,
       assignCCs: data.assignCCs || [],
+      automationLanes: data.automationLanes || [],
       drumLanes: data.drumLanes,
     };
 

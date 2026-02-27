@@ -69,10 +69,19 @@ export function parseStudioImport(file: File): Promise<StudioExport> {
         // Ensure customPresets is an array (may be missing in older exports)
         const customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
 
+        // Backfill automationLanes for older save files
+        const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            automationLanes: node.data.automationLanes || [],
+          },
+        }));
+
         resolve({
           version: data.version,
           exportedAt: data.exportedAt || '',
-          nodes: data.nodes,
+          nodes,
           edges: data.edges,
           customPresets,
         });

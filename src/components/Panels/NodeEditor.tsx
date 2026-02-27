@@ -3,7 +3,7 @@ import { X, Upload, Trash2, FileText, Download, Plus, ChevronUp, ChevronDown, Pe
 import { useStudioStore } from '../../store/useStudioStore';
 import { parseCSV } from '../../utils/csvParser';
 import { generateAllDefinitions, downloadFile } from '../../utils/hapaxExport';
-import type { InstrumentType, AssignCC, InstrumentNodeData } from '../../types';
+import type { InstrumentType, AssignCC, AutomationLane, AutomationType, InstrumentNodeData } from '../../types';
 
 export function NodeEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -16,12 +16,25 @@ export function NodeEditor() {
     uploadCCMap,
     clearCCMap,
     updateAssignCCs,
+    updateAutomationLanes,
   } = useStudioStore();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [newAssignCC, setNewAssignCC] = useState({ ccNumber: 1, paramName: '', defaultValue: 64 });
+
+  const [showAutomationForm, setShowAutomationForm] = useState(false);
+  const [editingAutomationSlot, setEditingAutomationSlot] = useState<number | null>(null);
+  const [newAutomationLane, setNewAutomationLane] = useState<{
+    type: AutomationType;
+    ccNumber: number;
+    cvNumber: number;
+    nrpnMsb: number;
+    nrpnLsb: number;
+    nrpnDepth: 7 | 14;
+    paramName: string;
+  }>({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
 
   const handleClose = useCallback(() => {
     setSelectedNode(null);
@@ -200,6 +213,111 @@ export function NodeEditor() {
     setNewAssignCC({ ccNumber: 1, paramName: '', defaultValue: 64 });
     setEditingSlot(null);
     setShowAssignForm(false);
+  }, []);
+
+  const handleSaveAutomationLane = useCallback(() => {
+    if (!selectedNodeId || !selectedNode) return;
+
+    const data = selectedNode.data as InstrumentNodeData;
+    const currentLanes = [...(data.automationLanes || [])];
+
+    const lane: AutomationLane = {
+      slot: 0, // will be set below
+      type: newAutomationLane.type,
+      paramName: newAutomationLane.paramName || undefined,
+    };
+
+    if (lane.type === 'CC') {
+      lane.ccNumber = newAutomationLane.ccNumber;
+      if (!lane.paramName) lane.paramName = `CC ${newAutomationLane.ccNumber}`;
+    } else if (lane.type === 'CV') {
+      lane.cvNumber = newAutomationLane.cvNumber;
+      if (!lane.paramName) lane.paramName = `CV ${newAutomationLane.cvNumber}`;
+    } else if (lane.type === 'NRPN') {
+      lane.nrpnMsb = newAutomationLane.nrpnMsb;
+      lane.nrpnLsb = newAutomationLane.nrpnLsb;
+      lane.nrpnDepth = newAutomationLane.nrpnDepth;
+      if (!lane.paramName) lane.paramName = `NRPN ${newAutomationLane.nrpnMsb}:${newAutomationLane.nrpnLsb}`;
+    } else {
+      // PB or AT
+      if (!lane.paramName) lane.paramName = lane.type;
+    }
+
+    if (editingAutomationSlot !== null) {
+      const index = currentLanes.findIndex((l) => l.slot === editingAutomationSlot);
+      if (index !== -1) {
+        currentLanes[index] = { ...lane, slot: currentLanes[index].slot };
+      }
+      updateAutomationLanes(selectedNodeId, currentLanes);
+    } else {
+      if (currentLanes.length >= 64) {
+        alert('Maximum 64 automation lanes allowed');
+        return;
+      }
+      lane.slot = currentLanes.length + 1;
+      updateAutomationLanes(selectedNodeId, [...currentLanes, lane]);
+    }
+
+    setNewAutomationLane({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
+    setEditingAutomationSlot(null);
+    setShowAutomationForm(false);
+  }, [selectedNodeId, selectedNode, newAutomationLane, editingAutomationSlot, updateAutomationLanes]);
+
+  const handleRemoveAutomationLane = useCallback(
+    (slot: number) => {
+      if (!selectedNodeId || !selectedNode) return;
+
+      const data = selectedNode.data as InstrumentNodeData;
+      const updated = (data.automationLanes || [])
+        .filter((l) => l.slot !== slot)
+        .map((l, i) => ({ ...l, slot: i + 1 }));
+
+      updateAutomationLanes(selectedNodeId, updated);
+    },
+    [selectedNodeId, selectedNode, updateAutomationLanes]
+  );
+
+  const handleMoveAutomationLane = useCallback(
+    (slot: number, direction: 'up' | 'down') => {
+      if (!selectedNodeId || !selectedNode) return;
+
+      const data = selectedNode.data as InstrumentNodeData;
+      const currentLanes = [...(data.automationLanes || [])];
+      const index = currentLanes.findIndex((l) => l.slot === slot);
+
+      if (direction === 'up' && index > 0) {
+        [currentLanes[index - 1], currentLanes[index]] = [currentLanes[index], currentLanes[index - 1]];
+      } else if (direction === 'down' && index < currentLanes.length - 1) {
+        [currentLanes[index], currentLanes[index + 1]] = [currentLanes[index + 1], currentLanes[index]];
+      }
+
+      const updated = currentLanes.map((l, i) => ({ ...l, slot: i + 1 }));
+      updateAutomationLanes(selectedNodeId, updated);
+    },
+    [selectedNodeId, selectedNode, updateAutomationLanes]
+  );
+
+  const handleEditAutomationLane = useCallback(
+    (lane: AutomationLane) => {
+      setNewAutomationLane({
+        type: lane.type,
+        ccNumber: lane.ccNumber ?? 0,
+        cvNumber: lane.cvNumber ?? 1,
+        nrpnMsb: lane.nrpnMsb ?? 0,
+        nrpnLsb: lane.nrpnLsb ?? 0,
+        nrpnDepth: lane.nrpnDepth ?? 7,
+        paramName: lane.paramName || '',
+      });
+      setEditingAutomationSlot(lane.slot);
+      setShowAutomationForm(true);
+    },
+    []
+  );
+
+  const handleCancelAutomationEdit = useCallback(() => {
+    setNewAutomationLane({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
+    setEditingAutomationSlot(null);
+    setShowAutomationForm(false);
   }, []);
 
   const handleExportSingle = useCallback(() => {
@@ -595,6 +713,339 @@ export function NodeEditor() {
             ) : (
               <p className="text-xs text-gray-500">
                 No ASSIGN parameters. Add up to 8 CCs for Hapax encoder mapping.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* AUTOMATION Lanes Section - not for Hapax */}
+        {!data.isHapax && (
+          <div className="border-t border-gray-700 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-400">AUTOMATION Lanes (1-64)</h3>
+              {(data.automationLanes?.length || 0) < 64 && !showAutomationForm && (
+                <button
+                  onClick={() => {
+                    setEditingAutomationSlot(null);
+                    setNewAutomationLane({ type: 'CC', ccNumber: 0, cvNumber: 1, nrpnMsb: 0, nrpnLsb: 0, nrpnDepth: 7, paramName: '' });
+                    setShowAutomationForm(true);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Add/Edit AUTOMATION form */}
+            {showAutomationForm && (
+              <div className="bg-gray-800 rounded-lg p-3 mb-3 space-y-2">
+                <div className="text-xs text-gray-400 font-medium mb-2">
+                  {editingAutomationSlot !== null ? `Edit AUTOMATION ${editingAutomationSlot}` : 'Add New AUTOMATION Lane'}
+                </div>
+
+                {/* Type selector */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Type</label>
+                  <select
+                    value={newAutomationLane.type}
+                    onChange={(e) => setNewAutomationLane({ ...newAutomationLane, type: e.target.value as AutomationType, paramName: '' })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                  >
+                    <option value="CC">CC</option>
+                    <option value="PB">PB (Pitch Bend)</option>
+                    <option value="AT">AT (Aftertouch)</option>
+                    <option value="CV">CV</option>
+                    <option value="NRPN">NRPN</option>
+                  </select>
+                </div>
+
+                {/* Dynamic fields based on type */}
+                {newAutomationLane.type === 'CC' && (
+                  <>
+                    {data.ccMap && data.ccMap.length > 0 ? (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Select CC Parameter</label>
+                        <select
+                          value={`${newAutomationLane.ccNumber}|${newAutomationLane.paramName}`}
+                          onChange={(e) => {
+                            const [ccNum, ...nameParts] = e.target.value.split('|');
+                            const paramName = nameParts.join('|');
+                            setNewAutomationLane({
+                              ...newAutomationLane,
+                              ccNumber: parseInt(ccNum) || 0,
+                              paramName,
+                            });
+                          }}
+                          className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                        >
+                          <option value="0|">-- Select a CC --</option>
+                          {(() => {
+                            const filtered = data.ccMap.filter((cc) => cc.ccNumber <= 119);
+                            const grouped = new Map<string, typeof data.ccMap>();
+                            for (const cc of filtered) {
+                              const section = cc.section || 'General';
+                              if (!grouped.has(section)) grouped.set(section, []);
+                              grouped.get(section)!.push(cc);
+                            }
+                            const sortedSections = [...grouped.keys()].sort((a, b) => {
+                              if (a === 'General') return 1;
+                              if (b === 'General') return -1;
+                              return a.localeCompare(b);
+                            });
+                            return sortedSections.map((section) => (
+                              <optgroup key={section} label={section}>
+                                {grouped.get(section)!
+                                  .sort((a, b) => (a.fullParamName || a.paramName).localeCompare(b.fullParamName || b.paramName))
+                                  .map((cc, i) => (
+                                    <option key={i} value={`${cc.ccNumber}|${cc.paramName}`}>
+                                      {cc.fullParamName || cc.paramName} (CC {cc.ccNumber})
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">CC Number (0-119)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={119}
+                          value={newAutomationLane.ccNumber}
+                          onChange={(e) => setNewAutomationLane({ ...newAutomationLane, ccNumber: Math.min(119, Math.max(0, parseInt(e.target.value) || 0)) })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {(newAutomationLane.type === 'PB' || newAutomationLane.type === 'AT') && (
+                  <p className="text-xs text-gray-500">
+                    {newAutomationLane.type === 'PB' ? 'Pitch Bend' : 'Aftertouch'} — no additional configuration needed.
+                  </p>
+                )}
+
+                {newAutomationLane.type === 'CV' && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">CV Output (1-4)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={4}
+                      value={newAutomationLane.cvNumber}
+                      onChange={(e) => setNewAutomationLane({ ...newAutomationLane, cvNumber: Math.min(4, Math.max(1, parseInt(e.target.value) || 1)) })}
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                )}
+
+                {newAutomationLane.type === 'NRPN' && (
+                  <>
+                    {data.nrpnMap && data.nrpnMap.length > 0 ? (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Select NRPN Parameter</label>
+                        <select
+                          value={`${newAutomationLane.nrpnMsb}|${newAutomationLane.nrpnLsb}|${newAutomationLane.paramName}`}
+                          onChange={(e) => {
+                            const [msb, lsb, ...nameParts] = e.target.value.split('|');
+                            const paramName = nameParts.join('|');
+                            setNewAutomationLane({
+                              ...newAutomationLane,
+                              nrpnMsb: parseInt(msb) || 0,
+                              nrpnLsb: parseInt(lsb) || 0,
+                              paramName,
+                            });
+                          }}
+                          className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                        >
+                          <option value="0|0|">-- Select an NRPN --</option>
+                          {(() => {
+                            const grouped = new Map<string, typeof data.nrpnMap>();
+                            for (const nrpn of data.nrpnMap) {
+                              const section = nrpn.section || 'General';
+                              if (!grouped.has(section)) grouped.set(section, []);
+                              grouped.get(section)!.push(nrpn);
+                            }
+                            const sortedSections = [...grouped.keys()].sort((a, b) => {
+                              if (a === 'General') return 1;
+                              if (b === 'General') return -1;
+                              return a.localeCompare(b);
+                            });
+                            return sortedSections.map((section) => (
+                              <optgroup key={section} label={section}>
+                                {grouped.get(section)!
+                                  .sort((a, b) => a.paramName.localeCompare(b.paramName))
+                                  .map((nrpn, i) => (
+                                    <option key={i} value={`${nrpn.msb}|${nrpn.lsb}|${nrpn.paramName}`}>
+                                      {nrpn.paramName} ({nrpn.msb}:{nrpn.lsb})
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">MSB (0-127)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={127}
+                            value={newAutomationLane.nrpnMsb}
+                            onChange={(e) => setNewAutomationLane({ ...newAutomationLane, nrpnMsb: Math.min(127, Math.max(0, parseInt(e.target.value) || 0)) })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">LSB (0-127)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={127}
+                            value={newAutomationLane.nrpnLsb}
+                            onChange={(e) => setNewAutomationLane({ ...newAutomationLane, nrpnLsb: Math.min(127, Math.max(0, parseInt(e.target.value) || 0)) })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Depth</label>
+                      <select
+                        value={newAutomationLane.nrpnDepth}
+                        onChange={(e) => setNewAutomationLane({ ...newAutomationLane, nrpnDepth: parseInt(e.target.value) as 7 | 14 })}
+                        className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                      >
+                        <option value={7}>7-bit</option>
+                        <option value={14}>14-bit</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Optional param name for CC / CV (PB/AT auto-set) */}
+                {(newAutomationLane.type === 'CC' && !(data.ccMap && data.ccMap.length > 0)) && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Parameter Name</label>
+                    <input
+                      type="text"
+                      value={newAutomationLane.paramName}
+                      onChange={(e) => setNewAutomationLane({ ...newAutomationLane, paramName: e.target.value })}
+                      placeholder="e.g., Cutoff"
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                )}
+                {newAutomationLane.type === 'NRPN' && !(data.nrpnMap && data.nrpnMap.length > 0) && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Parameter Name</label>
+                    <input
+                      type="text"
+                      value={newAutomationLane.paramName}
+                      onChange={(e) => setNewAutomationLane({ ...newAutomationLane, paramName: e.target.value })}
+                      placeholder="e.g., Filter Env"
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                )}
+                {newAutomationLane.type === 'CV' && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Parameter Name</label>
+                    <input
+                      type="text"
+                      value={newAutomationLane.paramName}
+                      onChange={(e) => setNewAutomationLane({ ...newAutomationLane, paramName: e.target.value })}
+                      placeholder="e.g., Pitch"
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveAutomationLane}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm font-medium transition-colors"
+                  >
+                    {editingAutomationSlot !== null ? 'Save' : 'Add'}
+                  </button>
+                  <button
+                    onClick={handleCancelAutomationEdit}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List of AUTOMATION lanes */}
+            {data.automationLanes && data.automationLanes.length > 0 ? (
+              <div className="space-y-1">
+                {data.automationLanes.map((lane, index) => (
+                  <div
+                    key={lane.slot}
+                    className="flex items-center justify-between bg-gray-800 rounded px-2 py-1.5 group"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-cyan-400 font-mono text-xs w-4 flex-shrink-0">{lane.slot}</span>
+                      <span className={`text-[10px] px-1 py-0.5 rounded font-medium flex-shrink-0 ${
+                        lane.type === 'CC' ? 'bg-blue-900/50 text-blue-300' :
+                        lane.type === 'PB' ? 'bg-purple-900/50 text-purple-300' :
+                        lane.type === 'AT' ? 'bg-pink-900/50 text-pink-300' :
+                        lane.type === 'CV' ? 'bg-yellow-900/50 text-yellow-300' :
+                        'bg-teal-900/50 text-teal-300'
+                      }`}>{lane.type}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">
+                        {lane.type === 'CC' && `${lane.ccNumber}`}
+                        {lane.type === 'CV' && `${lane.cvNumber}`}
+                        {lane.type === 'NRPN' && `${lane.nrpnMsb}:${lane.nrpnLsb}:${lane.nrpnDepth}`}
+                      </span>
+                      <span className="text-xs text-gray-300 truncate">{lane.paramName}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <button
+                        onClick={() => handleMoveAutomationLane(lane.slot, 'up')}
+                        disabled={index === 0}
+                        className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed p-0.5 transition-colors"
+                        title="Move up"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveAutomationLane(lane.slot, 'down')}
+                        disabled={index === data.automationLanes!.length - 1}
+                        className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed p-0.5 transition-colors"
+                        title="Move down"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleEditAutomationLane(lane)}
+                        className="text-gray-500 hover:text-blue-400 p-0.5 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveAutomationLane(lane.slot)}
+                        className="text-gray-500 hover:text-red-400 p-0.5 transition-colors"
+                        title="Remove"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                No automation lanes. Add up to 64 lanes for Hapax automation routing.
               </p>
             )}
           </div>

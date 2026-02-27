@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Node, Connection, XYPosition } from '@xyflow/react';
-import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, Port } from '../types';
+import type { InstrumentNodeData, CCMapping, NRPNMapping, InstrumentPreset, PortType, StudioEdge, AssignCC, AutomationLane, Port } from '../types';
 import { HAPAX_PRESET, EDGE_COLORS } from '../data/defaultNodes';
 import { detectCycle } from '../utils/loopDetection';
 
@@ -39,6 +39,7 @@ interface StudioState {
   uploadCCMap: (nodeId: string, ccMap: CCMapping[], nrpnMap: NRPNMapping[]) => void;
   clearCCMap: (nodeId: string) => void;
   updateAssignCCs: (nodeId: string, assignCCs: AssignCC[]) => void;
+  updateAutomationLanes: (nodeId: string, automationLanes: AutomationLane[]) => void;
 
   // Loop detection
   checkForLoops: () => void;
@@ -63,6 +64,7 @@ const createInitialHapaxNode = (): Node<InstrumentNodeData> => ({
     ccMap: [],
     nrpnMap: [],
     assignCCs: [],
+    automationLanes: [],
     isHapax: true,
     isRemovable: false,
   },
@@ -90,6 +92,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         ccMap: preset.ccMap ? [...preset.ccMap] : [],
         nrpnMap: preset.nrpnMap ? [...preset.nrpnMap] : [],
         assignCCs: [],
+        automationLanes: [],
         drumLanes: preset.defaultDrumLanes ? [...preset.defaultDrumLanes] : undefined,
         isHapax: preset.isHapax ?? false,
         isRemovable: preset.isRemovable ?? true,
@@ -115,6 +118,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         ccMap: data.ccMap,
         nrpnMap: data.nrpnMap,
         assignCCs: [],
+        automationLanes: [],
         isHapax: false,
         isRemovable: true,
       },
@@ -309,6 +313,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId ? { ...node, data: { ...node.data, assignCCs } as InstrumentNodeData } : node
+      ),
+    }));
+  },
+
+  updateAutomationLanes: (nodeId, automationLanes) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, automationLanes } as InstrumentNodeData } : node
       ),
     }));
   },

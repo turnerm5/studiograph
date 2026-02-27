@@ -40,6 +40,19 @@ export interface AssignCC {
   defaultValue: number;
 }
 
+export type AutomationType = 'CC' | 'PB' | 'AT' | 'CV' | 'NRPN';
+
+export interface AutomationLane {
+  slot: number;         // 1-64
+  type: AutomationType;
+  ccNumber?: number;    // 0-119, for CC type
+  cvNumber?: number;    // 1-4, for CV type
+  nrpnMsb?: number;    // 0-127, for NRPN type
+  nrpnLsb?: number;    // 0-127, for NRPN type
+  nrpnDepth?: 7 | 14;  // NRPN bit depth
+  paramName?: string;   // Display name
+}
+
 export interface InstrumentNodeData extends Record<string, unknown> {
   name: string;
   manufacturer: string;
@@ -50,6 +63,7 @@ export interface InstrumentNodeData extends Record<string, unknown> {
   ccMap: CCMapping[];
   nrpnMap: NRPNMapping[];
   assignCCs: AssignCC[];  // Up to 8 CCs for ASSIGN section
+  automationLanes: AutomationLane[];  // Up to 64 automation lanes
   drumLanes?: DrumLane[]; // For DRUM type - maps notes to drum sounds
   isHapax?: boolean;
   isRemovable?: boolean;
@@ -115,5 +129,6 @@ export interface HapaxDefinition {
   ccMappings: CCMapping[];
   nrpnMappings: NRPNMapping[];
   assignCCs: AssignCC[];
+  automationLanes: AutomationLane[];
   drumLanes?: DrumLane[];
 }
