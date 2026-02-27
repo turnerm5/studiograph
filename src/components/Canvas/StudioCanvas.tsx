@@ -156,9 +156,8 @@ function StudioCanvasInner() {
     for (const group of bySource.values()) {
       const count = group.length;
       for (let i = 0; i < count; i++) {
-        // Center offsets around 0: e.g. for 3 edges → -12, 0, 12
-        const offset = (i - (count - 1) / 2) * 12;
-        edgeOffsets.set(group[i].id, offset);
+        // Incremental positive offsets: e.g. for 3 edges → 0, 12, 24
+        edgeOffsets.set(group[i].id, i * 12);
       }
     }
 

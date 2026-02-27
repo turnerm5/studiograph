@@ -21,12 +21,12 @@ export function CustomEdge({
   const baseHorizontalY = minY - minVerticalDistance;
 
   // Each edge gets a different vertical level based on its computed offset
-  const adjustedHorizontalY = baseHorizontalY - Math.abs(routingOffset);
+  const adjustedHorizontalY = baseHorizontalY - routingOffset;
 
   // Small horizontal nudge when source and target are nearly vertical
   // to prevent overlapping vertical segments
   const dx = targetX - sourceX;
-  const nudge = Math.abs(dx) < 50 ? routingOffset * 0.5 : 0;
+  const nudge = Math.abs(dx) < 50 ? routingOffset * 0.4 : 0;
 
   // Create path: up from source, horizontal, down to target
   const edgePath = `M ${sourceX} ${sourceY}
