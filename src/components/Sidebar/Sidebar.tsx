@@ -355,7 +355,7 @@ export function Sidebar() {
   const [editingPreset, setEditingPreset] = useState<InstrumentPreset | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges } = useStudioStore();
+  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges, updateNodeData } = useStudioStore();
 
   const handleExport = useCallback(() => {
     exportStudio(nodes as any, edges, customPresets);
@@ -453,6 +453,11 @@ export function Sidebar() {
       // Update all matched canvas nodes
       for (const node of matchedNodes) {
         updateNodePortsAndCleanEdges(node.id, preset.inputs, preset.outputs);
+        updateNodeData(node.id, {
+          name: preset.name,
+          manufacturer: preset.manufacturer,
+          iconId: preset.iconId,
+        });
       }
     }
 
