@@ -45,9 +45,9 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     nrpnMap: NRPNMapping[];
   } | null>(null);
 
-  // Audio port toggles
-  const [includeAudioIn, setIncludeAudioIn] = useState(false);
-  const [includeAudioOut, setIncludeAudioOut] = useState(false);
+  // Audio port counts
+  const [audioInCount, setAudioInCount] = useState(0);
+  const [audioOutCount, setAudioOutCount] = useState(0);
 
   // Load manufacturers on open
   useEffect(() => {
@@ -65,8 +65,8 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setSelectedDevice(null);
       setPreviewData(null);
       setError(null);
-      setIncludeAudioIn(false);
-      setIncludeAudioOut(false);
+      setAudioInCount(0);
+      setAudioOutCount(0);
     }
   }, [isOpen]);
 
@@ -118,28 +118,35 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     }
   };
 
+  const generateAudioPorts = (count: number, direction: 'in' | 'out'): Port[] => {
+    if (count === 0) return [];
+    if (count === 1) {
+      return [{ id: `audio-${direction}-1`, label: direction === 'in' ? 'Audio In' : 'Audio Out', type: 'audio' }];
+    }
+    if (count === 2) {
+      return [
+        { id: `audio-${direction}-l`, label: `${direction === 'in' ? 'In' : 'Out'} L`, type: 'audio' },
+        { id: `audio-${direction}-r`, label: `${direction === 'in' ? 'In' : 'Out'} R`, type: 'audio' },
+      ];
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      id: `audio-${direction}-${i + 1}`,
+      label: `${direction === 'in' ? 'In' : 'Out'} ${i + 1}`,
+      type: 'audio' as const,
+    }));
+  };
+
   const handleAddInstrument = useCallback(() => {
     if (!selectedDevice || !previewData) return;
 
     const inputs: Port[] = [
       { id: 'midi-in', label: 'MIDI In', type: 'midi' },
+      ...generateAudioPorts(audioInCount, 'in'),
     ];
     const outputs: Port[] = [
       { id: 'midi-out', label: 'MIDI Out', type: 'midi' },
+      ...generateAudioPorts(audioOutCount, 'out'),
     ];
-
-    if (includeAudioIn) {
-      inputs.push(
-        { id: 'audio-in-l', label: 'In L', type: 'audio' },
-        { id: 'audio-in-r', label: 'In R', type: 'audio' },
-      );
-    }
-    if (includeAudioOut) {
-      outputs.push(
-        { id: 'audio-out-l', label: 'Out L', type: 'audio' },
-        { id: 'audio-out-r', label: 'Out R', type: 'audio' },
-      );
-    }
 
     onAddInstrument({
       name: selectedDevice.name,
@@ -151,7 +158,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     });
 
     onClose();
-  }, [selectedDevice, previewData, onAddInstrument, onClose, includeAudioIn, includeAudioOut]);
+  }, [selectedDevice, previewData, onAddInstrument, onClose, audioInCount, audioOutCount]);
 
   const handleBack = () => {
     if (step === 'devices') {
@@ -333,29 +340,41 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                 View on midi.guide
               </a>
 
-              {/* Audio Port Toggles */}
-              <div className="bg-gray-800 rounded-lg p-3 space-y-2">
+              {/* Audio Port Counts */}
+              <div className="bg-gray-800 rounded-lg p-3 space-y-3">
                 <h4 className="text-xs font-semibold text-gray-400 uppercase">Audio Ports</h4>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">Audio In</label>
                   <input
-                    type="checkbox"
-                    checked={includeAudioIn}
-                    onChange={(e) => setIncludeAudioIn(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-600 accent-orange-500 bg-gray-700"
+                    type="number"
+                    min={0}
+                    max={8}
+                    value={audioInCount}
+                    onChange={(e) => setAudioInCount(Math.max(0, Math.min(8, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-orange-500 focus:outline-none focus:border-orange-500"
                   />
-                  <span className="text-sm text-gray-300">Stereo Audio In</span>
-                  <span className="text-xs text-gray-500">(In L, In R)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                  {audioInCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateAudioPorts(audioInCount, 'in').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">Audio Out</label>
                   <input
-                    type="checkbox"
-                    checked={includeAudioOut}
-                    onChange={(e) => setIncludeAudioOut(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-600 accent-red-500 bg-gray-700"
+                    type="number"
+                    min={0}
+                    max={8}
+                    value={audioOutCount}
+                    onChange={(e) => setAudioOutCount(Math.max(0, Math.min(8, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-red-500 focus:outline-none focus:border-red-500"
                   />
-                  <span className="text-sm text-gray-300">Stereo Audio Out</span>
-                  <span className="text-xs text-gray-500">(Out L, Out R)</span>
-                </label>
+                  {audioOutCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateAudioPorts(audioOutCount, 'out').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}
