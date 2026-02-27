@@ -4,11 +4,13 @@ import {
   Drum, Piano, Guitar, Mic, Speaker, Radio,
   Waves, Sliders, CircuitBoard, Cpu, Box, Disc,
   Volume2, Headphones, Cable, Zap, Save, FolderOpen,
+  Upload, FileText,
   type LucideIcon
 } from 'lucide-react';
 import { MidiGuideModal } from './MidiGuideModal';
 import { useStudioStore } from '../../store/useStudioStore';
 import { exportStudio, parseStudioImport } from '../../utils/studioExport';
+import { parseCSV } from '../../utils/csvParser';
 import type { InstrumentPreset, InstrumentNodeData, Port, PortType, CCMapping, NRPNMapping } from '../../types';
 
 // Available icons for instruments
@@ -142,6 +144,27 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
   const [midiThru, setMidiThru] = useState(initialPreset?.outputs.filter(p => p.type === 'midi' && p.id.includes('thru')).length || 0);
   const [audioIn, setAudioIn] = useState(initialPreset?.inputs.filter(p => p.type === 'audio').length || 2);
   const [audioOut, setAudioOut] = useState(initialPreset?.outputs.filter(p => p.type === 'audio').length || 2);
+  const [ccMap, setCcMap] = useState<CCMapping[]>(initialPreset?.ccMap || []);
+  const [nrpnMap, setNrpnMap] = useState<NRPNMapping[]>(initialPreset?.nrpnMap || []);
+  const ccFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCCUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await parseCSV(file);
+      setCcMap(result.ccMap);
+      setNrpnMap(result.nrpnMap);
+    } catch (error) {
+      alert(`Error parsing CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    if (ccFileInputRef.current) ccFileInputRef.current.value = '';
+  };
+
+  const handleClearCC = () => {
+    setCcMap([]);
+    setNrpnMap([]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,9 +236,8 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
       inputs,
       outputs,
       iconId,
-      // Preserve existing data from initial preset
-      ccMap: initialPreset?.ccMap,
-      nrpnMap: initialPreset?.nrpnMap,
+      ccMap: ccMap.length > 0 ? ccMap : undefined,
+      nrpnMap: nrpnMap.length > 0 ? nrpnMap : undefined,
       defaultDrumLanes: initialPreset?.defaultDrumLanes,
     };
 
@@ -337,6 +359,57 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             />
           </div>
         </div>
+        {/* CC Definitions */}
+        <div className="border-t border-gray-700 pt-3">
+          <label className="block text-xs text-gray-400 mb-2">CC Definitions</label>
+          <input
+            ref={ccFileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCCUpload}
+            className="hidden"
+          />
+          {ccMap.length > 0 ? (
+            <div className="bg-gray-900 rounded p-2">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 text-green-400">
+                  <FileText size={14} />
+                  <span className="text-xs font-medium">{ccMap.length} CCs</span>
+                  {nrpnMap.length > 0 && (
+                    <span className="text-xs text-gray-400">+ {nrpnMap.length} NRPN</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearCC}
+                  className="text-gray-400 hover:text-red-400 transition-colors"
+                  title="Clear CC Map"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <div className="max-h-16 overflow-y-auto">
+                {ccMap.slice(0, 3).map((cc, i) => (
+                  <div key={i} className="text-[10px] text-gray-500 font-mono">
+                    CC {cc.ccNumber}: {cc.paramName}
+                  </div>
+                ))}
+                {ccMap.length > 3 && (
+                  <div className="text-[10px] text-gray-600">... and {ccMap.length - 3} more</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => ccFileInputRef.current?.click()}
+              className="w-full bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 py-1.5 px-3 rounded text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <Upload size={12} />
+              Upload CSV
+            </button>
+          )}
+        </div>
         <button
           type="submit"
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm font-medium transition-colors"
@@ -355,7 +428,7 @@ export function Sidebar() {
   const [editingPreset, setEditingPreset] = useState<InstrumentPreset | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges, updateNodeData } = useStudioStore();
+  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges, updateNodeData, uploadCCMap, clearCCMap } = useStudioStore();
 
   const handleExport = useCallback(() => {
     exportStudio(nodes as any, edges, customPresets);
@@ -458,6 +531,11 @@ export function Sidebar() {
           manufacturer: preset.manufacturer,
           iconId: preset.iconId,
         });
+        if (preset.ccMap && preset.ccMap.length > 0) {
+          uploadCCMap(node.id, preset.ccMap, preset.nrpnMap || []);
+        } else {
+          clearCCMap(node.id);
+        }
       }
     }
 

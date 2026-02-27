@@ -1,20 +1,16 @@
-import { useCallback, useRef, useState } from 'react';
-import { X, Upload, Trash2, FileText, Download, Plus, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { X, Download, Plus, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { useStudioStore } from '../../store/useStudioStore';
-import { parseCSV } from '../../utils/csvParser';
 import { generateAllDefinitions, downloadFile } from '../../utils/hapaxExport';
 import type { InstrumentType, AssignCC, AutomationLane, AutomationType, InstrumentNodeData } from '../../types';
 
 export function NodeEditor() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     nodes,
     edges,
     selectedNodeId,
     setSelectedNode,
     updateNodeData,
-    uploadCCMap,
-    clearCCMap,
     updateAssignCCs,
     updateAutomationLanes,
   } = useStudioStore();
@@ -85,42 +81,6 @@ export function NodeEditor() {
     },
     [selectedNodeId, updateNodeData]
   );
-
-  const handleFileUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !selectedNodeId) return;
-
-      try {
-        const result = await parseCSV(file);
-        uploadCCMap(selectedNodeId, result.ccMap, result.nrpnMap);
-
-        // Optionally update name and manufacturer from CSV
-        if (result.device && !selectedNode?.data.name.includes(result.device)) {
-          updateNodeData(selectedNodeId, {
-            name: result.device,
-            manufacturer: result.manufacturer || (selectedNode?.data as InstrumentNodeData).manufacturer,
-          });
-        }
-
-        alert(`Loaded ${result.ccMap.length} CC mappings and ${result.nrpnMap.length} NRPN mappings.`);
-      } catch (error) {
-        alert(`Error parsing CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    [selectedNodeId, selectedNode, uploadCCMap, updateNodeData]
-  );
-
-  const handleClearCCMap = useCallback(() => {
-    if (selectedNodeId) {
-      clearCCMap(selectedNodeId);
-    }
-  }, [selectedNodeId, clearCCMap]);
 
   const handleRemoveAssignCC = useCallback(
     (slot: number) => {
@@ -442,70 +402,6 @@ export function NodeEditor() {
               />
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600 peer-checked:after:bg-white"></div>
             </label>
-          </div>
-        )}
-
-        {/* Divider - CC Definitions - not for Hapax */}
-        {!data.isHapax && (
-          <div className="border-t border-gray-700 pt-4">
-            <h3 className="text-sm font-semibold text-gray-400 mb-3">CC Definitions</h3>
-
-            {/* Upload CSV */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="
-                w-full bg-gray-800 hover:bg-gray-700 border border-gray-600
-                text-white py-2 px-4 rounded-lg font-medium
-                flex items-center justify-center gap-2 transition-colors
-              "
-            >
-              <Upload size={16} />
-              Upload CSV
-            </button>
-
-            {/* CC Map Status */}
-            {data.ccMap && data.ccMap.length > 0 && (
-              <div className="mt-3 bg-gray-800 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <FileText size={16} />
-                    <span className="text-sm font-medium">CC Map Loaded</span>
-                  </div>
-                  <button
-                    onClick={handleClearCCMap}
-                    className="text-gray-400 hover:text-red-400 transition-colors"
-                    title="Clear CC Map"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <div className="text-xs text-gray-400">
-                  {data.ccMap.length} CC mappings
-                  {data.nrpnMap && data.nrpnMap.length > 0 && `, ${data.nrpnMap.length} NRPN mappings`}
-                </div>
-
-                {/* Preview first few CCs */}
-                <div className="mt-2 max-h-24 overflow-y-auto">
-                  {data.ccMap.slice(0, 5).map((cc, i) => (
-                    <div key={i} className="text-xs text-gray-500 font-mono">
-                      CC {cc.ccNumber}: {cc.paramName}
-                    </div>
-                  ))}
-                  {data.ccMap.length > 5 && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      ... and {data.ccMap.length - 5} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
