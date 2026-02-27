@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { StudioCanvas } from './components/Canvas/StudioCanvas';
 import { NodeEditor } from './components/Panels/NodeEditor';
@@ -11,6 +12,7 @@ function App() {
       <Sidebar />
       <StudioCanvas />
       {selectedNodeId && <NodeEditor />}
+      <Analytics />
     </div>
   );
 }
