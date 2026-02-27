@@ -5,7 +5,25 @@ import { groupBySection, groupNRPNBySection } from './csvParser';
 interface ConnectedInstrument {
   node: Node<InstrumentNodeData>;
   hapaxPort: string;
+  isAnalog: boolean;
 }
+
+const HAPAX_PORT_MAP: Record<string, { outPort: string; isAnalog: boolean }> = {
+  'midi-a': { outPort: 'A', isAnalog: false },
+  'midi-b': { outPort: 'B', isAnalog: false },
+  'midi-c': { outPort: 'C', isAnalog: false },
+  'midi-d': { outPort: 'D', isAnalog: false },
+  'usb-host': { outPort: 'USBH', isAnalog: false },
+  'usb-device-out': { outPort: 'USBD', isAnalog: false },
+  'cv-1': { outPort: 'CV1', isAnalog: true },
+  'cv-2': { outPort: 'CV2', isAnalog: true },
+  'cv-3': { outPort: 'CV3', isAnalog: true },
+  'cv-4': { outPort: 'CV4', isAnalog: true },
+  'gate-1': { outPort: 'G1', isAnalog: true },
+  'gate-2': { outPort: 'G2', isAnalog: true },
+  'gate-3': { outPort: 'G3', isAnalog: true },
+  'gate-4': { outPort: 'G4', isAnalog: true },
+};
 
 // Find all instruments connected to the Hapax's MIDI outputs
 export function findConnectedInstruments(
@@ -18,32 +36,62 @@ export function findConnectedInstruments(
   });
   if (!hapaxNode) return [];
 
-  const connected: ConnectedInstrument[] = [];
+  const raw: ConnectedInstrument[] = [];
 
-  // Find edges originating from Hapax MIDI outputs
+  // Find edges originating from Hapax outputs
   for (const edge of edges) {
     if (edge.source !== hapaxNode.id) continue;
 
-    // Check if the source handle is a MIDI output (A, B, C, or USB Host)
     const sourceHandle = edge.sourceHandle || '';
-    let hapaxPort = 'NULL';
-
-    if (sourceHandle === 'midi-a') hapaxPort = 'A';
-    else if (sourceHandle === 'midi-b') hapaxPort = 'B';
-    else if (sourceHandle === 'midi-c') hapaxPort = 'C';
-    else if (sourceHandle === 'usb-host') hapaxPort = 'USBH';
-    else continue; // Skip CV outputs
+    const portInfo = HAPAX_PORT_MAP[sourceHandle];
+    if (!portInfo) continue;
 
     const targetNode = nodes.find((n) => n.id === edge.target);
     if (targetNode) {
       const targetData = targetNode.data as InstrumentNodeData;
       if (!targetData.isHapax) {
-        connected.push({ node: targetNode, hapaxPort });
+        raw.push({ node: targetNode, hapaxPort: portInfo.outPort, isAnalog: portInfo.isAnalog });
       }
     }
   }
 
-  return connected;
+  // CV+Gate combination: merge cv-N + gate-N to same target into CVGx
+  const grouped = new Map<string, ConnectedInstrument[]>();
+  for (const inst of raw) {
+    const list = grouped.get(inst.node.id) || [];
+    list.push(inst);
+    grouped.set(inst.node.id, list);
+  }
+
+  const result: ConnectedInstrument[] = [];
+  for (const instruments of grouped.values()) {
+    const cvEntries = instruments.filter(i => /^CV\d$/.test(i.hapaxPort));
+    const gateEntries = instruments.filter(i => /^G\d$/.test(i.hapaxPort));
+    const others = instruments.filter(i => !/^CV\d$/.test(i.hapaxPort) && !/^G\d$/.test(i.hapaxPort));
+    result.push(...others);
+
+    const matchedCV = new Set<string>();
+    const matchedGate = new Set<string>();
+
+    for (const cv of cvEntries) {
+      const n = cv.hapaxPort.replace('CV', '');
+      const gate = gateEntries.find(g => g.hapaxPort === `G${n}`);
+      if (gate) {
+        result.push({ node: cv.node, hapaxPort: `CVG${n}`, isAnalog: true });
+        matchedCV.add(cv.hapaxPort);
+        matchedGate.add(gate.hapaxPort);
+      }
+    }
+
+    for (const cv of cvEntries) {
+      if (!matchedCV.has(cv.hapaxPort)) result.push(cv);
+    }
+    for (const gate of gateEntries) {
+      if (!matchedGate.has(gate.hapaxPort)) result.push(gate);
+    }
+  }
+
+  return result;
 }
 
 function formatAutomationLane(lane: AutomationLane): string {
@@ -166,11 +214,21 @@ export function generateAllDefinitions(
   const connected = findConnectedInstruments(nodes, edges);
   const definitions: { nodeId: string; filename: string; content: string }[] = [];
 
-  for (const { node, hapaxPort } of connected) {
-    const data = node.data as InstrumentNodeData;
+  // Count connections per node for filename/trackname dedup
+  const nodeConnectionCount = new Map<string, number>();
+  for (const { node } of connected) {
+    nodeConnectionCount.set(node.id, (nodeConnectionCount.get(node.id) || 0) + 1);
+  }
 
-    // Create a clean track name (no spaces, short)
-    const trackName = data.name.replace(/\s+/g, '').substring(0, 12);
+  for (const { node, hapaxPort, isAnalog } of connected) {
+    const data = node.data as InstrumentNodeData;
+    const hasMultiple = (nodeConnectionCount.get(node.id) || 0) > 1;
+
+    // Create a clean track name (no spaces, short), with port suffix for multi-connection
+    const baseName = data.name.replace(/\s+/g, '');
+    const trackName = hasMultiple
+      ? `${baseName}_${hapaxPort}`.substring(0, 12)
+      : baseName.substring(0, 12);
 
     const definition: HapaxDefinition = {
       name: data.name,
@@ -178,7 +236,7 @@ export function generateAllDefinitions(
       trackName,
       type: data.type,
       outPort: hapaxPort,
-      outChannel: data.channel,
+      outChannel: isAnalog ? 'NULL' : data.channel,
       ccMappings: data.ccMap,
       nrpnMappings: data.nrpnMap,
       assignCCs: data.assignCCs || [],
@@ -187,7 +245,10 @@ export function generateAllDefinitions(
     };
 
     const content = generateHapaxDefinition(definition);
-    const filename = `${data.name.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    const sanitized = data.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = hasMultiple
+      ? `${sanitized}_${hapaxPort}.txt`
+      : `${sanitized}.txt`;
 
     definitions.push({ nodeId: node.id, filename, content });
   }

@@ -404,6 +404,28 @@ export const useStudioStore = create<StudioState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           syncNodeIdCounter(state.nodes);
+          // Backfill missing Hapax output ports from older persisted state
+          let needsMigration = false;
+          const migratedNodes = state.nodes.map((node) => {
+            const data = node.data as InstrumentNodeData;
+            if (!data.isHapax) return node;
+            const outputIds = new Set(data.outputs.map(p => p.id));
+            if (outputIds.has('usb-device-out') && outputIds.has('midi-d')) return node;
+            needsMigration = true;
+            const newOutputs = [...data.outputs];
+            if (!outputIds.has('midi-d')) {
+              const idx = newOutputs.findIndex(p => p.id === 'midi-c');
+              if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'midi-d', label: 'MIDI D', type: 'midi' });
+            }
+            if (!outputIds.has('usb-device-out')) {
+              const idx = newOutputs.findIndex(p => p.id === 'usb-host');
+              if (idx !== -1) newOutputs.splice(idx + 1, 0, { id: 'usb-device-out', label: 'USB Device', type: 'usb' });
+            }
+            return { ...node, data: { ...data, outputs: newOutputs } };
+          });
+          if (needsMigration) {
+            useStudioStore.setState({ nodes: migratedNodes });
+          }
           state.checkForLoops();
         }
       },

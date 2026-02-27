@@ -97,8 +97,8 @@ function StudioCanvasInner() {
         removeEdge(existingTargetEdge.id);
       }
 
-      // One-cable-per-output: MIDI and CV outputs can only drive one input
-      if (sourcePort.type === 'midi' || sourcePort.type === 'cv') {
+      // One-cable-per-output: MIDI, CV, and USB outputs can only drive one input
+      if (sourcePort.type === 'midi' || sourcePort.type === 'cv' || sourcePort.type === 'usb') {
         const existingSourceEdge = edges.find(
           (e) => e.source === source && e.sourceHandle === sourceHandle
         );

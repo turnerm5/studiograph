@@ -79,6 +79,19 @@ export function parseStudioData(json: string): StudioExport {
       }));
     }
 
+    // Backfill missing Hapax output ports for older save files
+    if (nodeData.isHapax) {
+      const outputIds = new Set(nodeData.outputs.map((p) => p.id));
+      if (!outputIds.has('midi-d')) {
+        const idx = nodeData.outputs.findIndex((p) => p.id === 'midi-c');
+        if (idx !== -1) nodeData.outputs.splice(idx + 1, 0, { id: 'midi-d', label: 'MIDI D', type: 'midi' });
+      }
+      if (!outputIds.has('usb-device-out')) {
+        const idx = nodeData.outputs.findIndex((p) => p.id === 'usb-host');
+        if (idx !== -1) nodeData.outputs.splice(idx + 1, 0, { id: 'usb-device-out', label: 'USB Device', type: 'usb' });
+      }
+    }
+
     return { ...node, data: nodeData };
   });
 

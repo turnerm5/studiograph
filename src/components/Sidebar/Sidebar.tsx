@@ -62,6 +62,8 @@ function InstrumentCard({ preset, isCustom, onEdit, onDelete }: InstrumentCardPr
   const midiThrus = preset.outputs.filter(p => p.type === 'midi' && p.id.includes('thru')).length;
   const audioInputs = preset.inputs.filter(p => p.type === 'audio').length;
   const audioOutputs = preset.outputs.filter(p => p.type === 'audio').length;
+  const usbInputs = preset.inputs.filter(p => p.type === 'usb').length;
+  const usbOutputs = preset.outputs.filter(p => p.type === 'usb').length;
 
   return (
     <div
@@ -125,6 +127,16 @@ function InstrumentCard({ preset, isCustom, onEdit, onDelete }: InstrumentCardPr
             {audioOutputs} Audio Out
           </span>
         )}
+        {usbInputs > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">
+            {usbInputs} USB In
+          </span>
+        )}
+        {usbOutputs > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">
+            {usbOutputs} USB Out
+          </span>
+        )}
       </div>
     </div>
   );
@@ -148,6 +160,8 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
   const [audioOut, setAudioOut] = useState(initialPreset?.outputs.filter(p => p.type === 'audio').length || 2);
   const [cvIn, setCvIn] = useState(initialPreset?.inputs.filter(p => p.type === 'cv').length || 0);
   const [cvOut, setCvOut] = useState(initialPreset?.outputs.filter(p => p.type === 'cv').length || 0);
+  const [usbIn, setUsbIn] = useState(initialPreset?.inputs.filter(p => p.type === 'usb').length || 0);
+  const [usbOut, setUsbOut] = useState(initialPreset?.outputs.filter(p => p.type === 'usb').length || 0);
   const [ccMap, setCcMap] = useState<CCMapping[]>(initialPreset?.ccMap || []);
   const [nrpnMap, setNrpnMap] = useState<NRPNMapping[]>(initialPreset?.nrpnMap || []);
   const ccFileInputRef = useRef<HTMLInputElement>(null);
@@ -246,6 +260,24 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
         id: `cv-out-${i + 1}`,
         label: cvOut === 1 ? 'CV Out' : `CV Out ${i + 1}`,
         type: 'cv' as PortType,
+      });
+    }
+
+    // Add USB inputs
+    for (let i = 0; i < usbIn; i++) {
+      inputs.push({
+        id: `usb-in-${i + 1}`,
+        label: usbIn === 1 ? 'USB In' : `USB In ${i + 1}`,
+        type: 'usb' as PortType,
+      });
+    }
+
+    // Add USB outputs
+    for (let i = 0; i < usbOut; i++) {
+      outputs.push({
+        id: `usb-out-${i + 1}`,
+        label: usbOut === 1 ? 'USB Out' : `USB Out ${i + 1}`,
+        type: 'usb' as PortType,
       });
     }
 
@@ -413,6 +445,34 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
                   max={4}
                   value={cvOut}
                   onChange={(e) => setCvOut(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+            </div>
+          </div>
+          {/* USB Ports */}
+          <div className="bg-gray-900 rounded-lg p-2.5">
+            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">USB Ports</h4>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">USB In</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={2}
+                  value={usbIn}
+                  onChange={(e) => setUsbIn(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">USB Out</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={2}
+                  value={usbOut}
+                  onChange={(e) => setUsbOut(parseInt(e.target.value) || 0)}
                   className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
                 />
               </div>
@@ -725,6 +785,14 @@ export function Sidebar() {
           <div className="flex items-center gap-1">
             <span className="w-3 h-0.5 bg-red-500"></span>
             <span className="text-gray-400">Audio</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-yellow-500"></span>
+            <span className="text-gray-400">CV</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-cyan-500"></span>
+            <span className="text-gray-400">USB</span>
           </div>
         </div>
       </div>

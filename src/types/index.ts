@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 
-export type PortType = 'midi' | 'audio' | 'cv';
+export type PortType = 'midi' | 'audio' | 'cv' | 'usb';
 
 export interface Port {
   id: string;
@@ -128,7 +128,7 @@ export interface HapaxDefinition {
   trackName: string;
   type: InstrumentType;
   outPort: string;
-  outChannel: number;
+  outChannel: number | 'NULL';
   ccMappings: CCMapping[];
   nrpnMappings: NRPNMapping[];
   assignCCs: AssignCC[];
