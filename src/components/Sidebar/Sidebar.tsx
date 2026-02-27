@@ -322,9 +322,9 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             ))}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="space-y-3">
           {/* MIDI Ports */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+          <div className="bg-gray-900 rounded-lg p-2.5">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">MIDI Ports</h4>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -363,7 +363,7 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             </div>
           </div>
           {/* Audio Ports */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+          <div className="bg-gray-900 rounded-lg p-2.5">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Audio Ports</h4>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -391,7 +391,7 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             </div>
           </div>
           {/* CV Ports */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+          <div className="bg-gray-900 rounded-lg p-2.5">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">CV Ports</h4>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
