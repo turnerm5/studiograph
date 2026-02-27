@@ -9,7 +9,7 @@ import {
 import { MidiGuideModal } from './MidiGuideModal';
 import { useStudioStore } from '../../store/useStudioStore';
 import { exportStudio, parseStudioImport } from '../../utils/studioExport';
-import type { InstrumentPreset, Port, PortType, CCMapping, NRPNMapping } from '../../types';
+import type { InstrumentPreset, InstrumentNodeData, Port, PortType, CCMapping, NRPNMapping } from '../../types';
 
 // Available icons for instruments
 const AVAILABLE_ICONS: { id: string; icon: LucideIcon; label: string }[] = [
@@ -355,7 +355,7 @@ export function Sidebar() {
   const [editingPreset, setEditingPreset] = useState<InstrumentPreset | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const { nodes, edges, importStudio } = useStudioStore();
+  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges } = useStudioStore();
 
   const handleExport = useCallback(() => {
     exportStudio(nodes as any, edges, customPresets);
@@ -415,6 +415,47 @@ export function Sidebar() {
   };
 
   const handleSaveEditedPreset = (preset: InstrumentPreset) => {
+    // Find canvas nodes created from this preset
+    const matchedNodes = nodes.filter(
+      (n) => (n.data as InstrumentNodeData).presetId === preset.id
+    );
+
+    if (matchedNodes.length > 0) {
+      // Compute how many edges would be disconnected across all matched nodes
+      const newPortIds = new Set([
+        ...preset.inputs.map((p) => p.id),
+        ...preset.outputs.map((p) => p.id),
+      ]);
+
+      let affectedEdgeCount = 0;
+      for (const node of matchedNodes) {
+        const nodeData = node.data as InstrumentNodeData;
+        const oldPortIds = [
+          ...nodeData.inputs.map((p) => p.id),
+          ...nodeData.outputs.map((p) => p.id),
+        ];
+        const removedPortIds = oldPortIds.filter((id) => !newPortIds.has(id));
+        if (removedPortIds.length > 0) {
+          affectedEdgeCount += edges.filter((e) => {
+            if (e.source === node.id && removedPortIds.includes(e.sourceHandle!)) return true;
+            if (e.target === node.id && removedPortIds.includes(e.targetHandle!)) return true;
+            return false;
+          }).length;
+        }
+      }
+
+      if (affectedEdgeCount > 0) {
+        if (!confirm(`Updating ${preset.name} will disconnect ${affectedEdgeCount} connection(s) on the canvas. Continue?`)) {
+          return;
+        }
+      }
+
+      // Update all matched canvas nodes
+      for (const node of matchedNodes) {
+        updateNodePortsAndCleanEdges(node.id, preset.inputs, preset.outputs);
+      }
+    }
+
     setCustomPresets(customPresets.map(p => p.id === preset.id ? preset : p));
     setEditingPreset(null);
   };

@@ -32,6 +32,9 @@ interface StudioState {
   removeEdge: (id: string) => void;
   onEdgesChange: (changes: any) => void;
 
+  // Port updates
+  updateNodePortsAndCleanEdges: (nodeId: string, inputs: Port[], outputs: Port[]) => void;
+
   // CC Map
   uploadCCMap: (nodeId: string, ccMap: CCMapping[], nrpnMap: NRPNMapping[]) => void;
   clearCCMap: (nodeId: string) => void;
@@ -91,6 +94,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         isHapax: preset.isHapax ?? false,
         isRemovable: preset.isRemovable ?? true,
         iconId: preset.iconId,
+        presetId: preset.id,
       },
     };
     set((state) => ({ nodes: [...state.nodes, newNode] }));
@@ -248,6 +252,40 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }
       return { edges: newEdges };
     });
+    get().checkForLoops();
+  },
+
+  updateNodePortsAndCleanEdges: (nodeId, inputs, outputs) => {
+    const state = get();
+    const node = state.nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const nodeData = node.data as InstrumentNodeData;
+    const oldPortIds = new Set([
+      ...nodeData.inputs.map((p) => p.id),
+      ...nodeData.outputs.map((p) => p.id),
+    ]);
+    const newPortIds = new Set([
+      ...inputs.map((p) => p.id),
+      ...outputs.map((p) => p.id),
+    ]);
+    const removedPortIds = [...oldPortIds].filter((id) => !newPortIds.has(id));
+
+    set((state) => ({
+      nodes: state.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, inputs, outputs } as InstrumentNodeData }
+          : n
+      ),
+      edges: removedPortIds.length > 0
+        ? state.edges.filter((e) => {
+            if (e.source === nodeId && removedPortIds.includes(e.sourceHandle!)) return false;
+            if (e.target === nodeId && removedPortIds.includes(e.targetHandle!)) return false;
+            return true;
+          })
+        : state.edges,
+    }));
+
     get().checkForLoops();
   },
 

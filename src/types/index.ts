@@ -56,6 +56,7 @@ export interface InstrumentNodeData extends Record<string, unknown> {
   width?: number;  // Custom width set by user resizing
   iconId?: string; // Icon identifier for display
   localOff?: boolean; // Local Off prevents MIDI feedback loops
+  presetId?: string; // Links canvas node to sidebar preset for edit propagation
 }
 
 export type InstrumentNode = Node<InstrumentNodeData>;

@@ -45,6 +45,11 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     nrpnMap: NRPNMapping[];
   } | null>(null);
 
+  // MIDI port counts
+  const [midiInCount, setMidiInCount] = useState(1);
+  const [midiOutCount, setMidiOutCount] = useState(1);
+  const [midiThruCount, setMidiThruCount] = useState(0);
+
   // Audio port counts
   const [audioInCount, setAudioInCount] = useState(0);
   const [audioOutCount, setAudioOutCount] = useState(0);
@@ -65,6 +70,9 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setSelectedDevice(null);
       setPreviewData(null);
       setError(null);
+      setMidiInCount(1);
+      setMidiOutCount(1);
+      setMidiThruCount(0);
       setAudioInCount(0);
       setAudioOutCount(0);
     }
@@ -118,6 +126,30 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     }
   };
 
+  const generateMidiPorts = (count: number, direction: 'in' | 'out'): Port[] => {
+    if (count === 0) return [];
+    if (count === 1) {
+      return [{ id: `midi-${direction}-1`, label: direction === 'in' ? 'MIDI In' : 'MIDI Out', type: 'midi' }];
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      id: `midi-${direction}-${i + 1}`,
+      label: `MIDI ${direction === 'in' ? 'In' : 'Out'} ${i + 1}`,
+      type: 'midi' as const,
+    }));
+  };
+
+  const generateMidiThruPorts = (count: number): Port[] => {
+    if (count === 0) return [];
+    if (count === 1) {
+      return [{ id: 'midi-thru-1', label: 'MIDI Thru', type: 'midi' }];
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      id: `midi-thru-${i + 1}`,
+      label: `MIDI Thru ${i + 1}`,
+      type: 'midi' as const,
+    }));
+  };
+
   const generateAudioPorts = (count: number, direction: 'in' | 'out'): Port[] => {
     if (count === 0) return [];
     if (count === 1) {
@@ -140,11 +172,12 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     if (!selectedDevice || !previewData) return;
 
     const inputs: Port[] = [
-      { id: 'midi-in', label: 'MIDI In', type: 'midi' },
+      ...generateMidiPorts(midiInCount, 'in'),
       ...generateAudioPorts(audioInCount, 'in'),
     ];
     const outputs: Port[] = [
-      { id: 'midi-out', label: 'MIDI Out', type: 'midi' },
+      ...generateMidiPorts(midiOutCount, 'out'),
+      ...generateMidiThruPorts(midiThruCount),
       ...generateAudioPorts(audioOutCount, 'out'),
     ];
 
@@ -158,7 +191,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     });
 
     onClose();
-  }, [selectedDevice, previewData, onAddInstrument, onClose, audioInCount, audioOutCount]);
+  }, [selectedDevice, previewData, onAddInstrument, onClose, midiInCount, midiOutCount, midiThruCount, audioInCount, audioOutCount]);
 
   const handleBack = () => {
     if (step === 'devices') {
@@ -339,6 +372,59 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                 <ExternalLink size={12} />
                 View on midi.guide
               </a>
+
+              {/* MIDI Ports */}
+              <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase">MIDI Ports</h4>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">MIDI In</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={midiInCount}
+                    onChange={(e) => setMidiInCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-green-500 focus:outline-none focus:border-green-500"
+                  />
+                  {midiInCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateMidiPorts(midiInCount, 'in').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">MIDI Out</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={midiOutCount}
+                    onChange={(e) => setMidiOutCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-blue-500 focus:outline-none focus:border-blue-500"
+                  />
+                  {midiOutCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateMidiPorts(midiOutCount, 'out').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">MIDI Thru</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={midiThruCount}
+                    onChange={(e) => setMidiThruCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-cyan-500 focus:outline-none focus:border-cyan-500"
+                  />
+                  {midiThruCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateMidiThruPorts(midiThruCount).map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
 
               {/* Audio Port Counts */}
               <div className="bg-gray-800 rounded-lg p-3 space-y-3">
