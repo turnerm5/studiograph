@@ -80,6 +80,7 @@ export type InstrumentNode = Node<InstrumentNodeData>;
 export interface StudioEdge extends Edge {
   data?: {
     portType: PortType;
+    routingOffset?: number;
   };
 }
 

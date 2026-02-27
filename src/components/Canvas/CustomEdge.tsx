@@ -8,13 +8,10 @@ export function CustomEdge({
   targetY,
   style,
   markerEnd,
-  sourceHandleId,
   selected,
+  data,
 }: EdgeProps) {
-  // Calculate a stable offset based on source handle to prevent overlap
-  // Use sourceHandleId to determine offset - each handle gets its own level
-  const handleOffset = sourceHandleId ?
-    (sourceHandleId.charCodeAt(sourceHandleId.length - 1) % 10) * 8 : 0;
+  const routingOffset = (data as { routingOffset?: number })?.routingOffset ?? 0;
 
   // Minimum distance to travel up before going horizontal (since handles are on top)
   const minVerticalDistance = 25;
@@ -23,14 +20,19 @@ export function CustomEdge({
   const minY = Math.min(sourceY, targetY);
   const baseHorizontalY = minY - minVerticalDistance;
 
-  // Each edge from different handles gets a different level based on handle ID
-  const adjustedHorizontalY = baseHorizontalY - handleOffset;
+  // Each edge gets a different vertical level based on its computed offset
+  const adjustedHorizontalY = baseHorizontalY - Math.abs(routingOffset);
+
+  // Small horizontal nudge when source and target are nearly vertical
+  // to prevent overlapping vertical segments
+  const dx = targetX - sourceX;
+  const nudge = Math.abs(dx) < 50 ? routingOffset * 0.5 : 0;
 
   // Create path: up from source, horizontal, down to target
   const edgePath = `M ${sourceX} ${sourceY}
     L ${sourceX} ${adjustedHorizontalY}
-    L ${targetX} ${adjustedHorizontalY}
-    L ${targetX} ${targetY}`;
+    L ${targetX + nudge} ${adjustedHorizontalY}
+    L ${targetX + nudge} ${targetY}`;
 
   // Apply selected styling
   const selectedStyle = selected

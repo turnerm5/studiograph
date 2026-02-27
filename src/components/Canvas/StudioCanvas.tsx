@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -90,11 +90,21 @@ function StudioCanvasInner() {
       if (!sourcePort) return;
 
       // Remove any existing connection to this target handle (replace behavior)
-      const existingEdge = edges.find(
+      const existingTargetEdge = edges.find(
         (e) => e.target === target && e.targetHandle === targetHandle
       );
-      if (existingEdge) {
-        removeEdge(existingEdge.id);
+      if (existingTargetEdge) {
+        removeEdge(existingTargetEdge.id);
+      }
+
+      // One-cable-per-output: MIDI and CV outputs can only drive one input
+      if (sourcePort.type === 'midi' || sourcePort.type === 'cv') {
+        const existingSourceEdge = edges.find(
+          (e) => e.source === source && e.sourceHandle === sourceHandle
+        );
+        if (existingSourceEdge) {
+          removeEdge(existingSourceEdge.id);
+        }
       }
 
       addEdge(connection, sourcePort.type);
@@ -132,12 +142,36 @@ function StudioCanvasInner() {
     setSelectedNode(null);
   }, [setSelectedNode]);
 
-  // Style edges based on loop detection
-  const styledEdges = edges.map((edge) => ({
-    ...edge,
-    className: loopEdges.includes(edge.id) ? 'loop-edge' : '',
-    animated: loopEdges.includes(edge.id),
-  }));
+  // Compute routing offsets and style edges
+  const styledEdges = useMemo(() => {
+    // Group edges by source node to assign incremental offsets
+    const bySource = new Map<string, typeof edges>();
+    for (const edge of edges) {
+      const group = bySource.get(edge.source) || [];
+      group.push(edge);
+      bySource.set(edge.source, group);
+    }
+
+    const edgeOffsets = new Map<string, number>();
+    for (const group of bySource.values()) {
+      const count = group.length;
+      for (let i = 0; i < count; i++) {
+        // Center offsets around 0: e.g. for 3 edges → -12, 0, 12
+        const offset = (i - (count - 1) / 2) * 12;
+        edgeOffsets.set(group[i].id, offset);
+      }
+    }
+
+    return edges.map((edge) => ({
+      ...edge,
+      data: {
+        ...edge.data,
+        routingOffset: edgeOffsets.get(edge.id) || 0,
+      },
+      className: loopEdges.includes(edge.id) ? 'loop-edge' : '',
+      animated: loopEdges.includes(edge.id),
+    }));
+  }, [edges, loopEdges]);
 
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">

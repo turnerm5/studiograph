@@ -1,5 +1,5 @@
-import { memo, useCallback, useRef } from 'react';
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
+import { memo, useCallback, useEffect, useRef } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type NodeProps, type Node } from '@xyflow/react';
 import {
   Cpu, Music, Trash2,
   Drum, Piano, Guitar, Mic, Speaker, Radio,
@@ -94,6 +94,12 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
   const portWidth = 44; // Width per port
   const autoWidth = Math.max(minWidth, maxPorts * 2 * portWidth + 40);
   const calculatedWidth = nodeData.width || autoWidth;
+
+  // Keep ReactFlow's internal handle position cache in sync
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, calculatedWidth, inputCount, outputCount]);
 
   // Custom resize handler
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
