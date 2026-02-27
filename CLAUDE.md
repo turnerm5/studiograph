@@ -44,7 +44,18 @@ Three-column layout, all managed in a single view (no router):
 
 ### State (Zustand Store)
 
-Single store `useStudioStore` manages: nodes, edges, selectedNodeId, loop detection state, custom presets. Key actions: `addNode`, `removeNode`, `updateNodeData`, `addEdge`, `removeEdge`, `checkForLoops`, `importStudio`.
+Single store `useStudioStore` manages:
+
+- **Graph data**: `nodes: Node<InstrumentNodeData>[]`, `edges: StudioEdge[]`
+- **Selection**: `selectedNodeId: string | null`
+- **Loop detection**: `hasLoop: boolean`, `loopEdges: string[]` — recomputed via DFS on every edge change
+
+Key actions:
+- **Nodes**: `addNode`, `addNodeFromMidiGuide`, `removeNode`, `updateNodeData`, `updateNodeWidth`, `setSelectedNode`, `onNodesChange`
+- **Edges**: `addEdge`, `removeEdge`, `onEdgesChange` — edges carry `portType` metadata and are color-coded
+- **Ports**: `updateNodePortsAndCleanEdges` — updates ports and removes orphaned edges in one operation
+- **MIDI data**: `uploadCCMap`, `clearCCMap`, `updateAssignCCs`, `updateAutomationLanes`, `updateDrumLanes`
+- **System**: `checkForLoops`, `importStudio`
 
 ### Component Structure
 
@@ -57,20 +68,33 @@ Single store `useStudioStore` manages: nodes, edges, selectedNodeId, loop detect
 
 Core domain types:
 - **PortType**: `'midi' | 'audio' | 'cv'` — connections are type-validated (MIDI↔MIDI only, etc.)
-- **InstrumentNodeData**: name, manufacturer, channel, type (`POLY`/`DRUM`/`MPE`), ports, ccMap, nrpnMap, assignCCs, drumLanes
+- **InstrumentNodeData**: name, manufacturer, channel, type (`POLY`/`DRUM`/`MPE`), ports, ccMap, nrpnMap, assignCCs, automationLanes, drumLanes, iconId, localOff, presetId, width
+- **StudioEdge**: extends ReactFlow `Edge` with `data.portType` — IDs encode the full connection path
+- **InstrumentPreset**: sidebar preset template — links to canvas nodes via `presetId` for edit propagation
+- **CCMapping** / **NRPNMapping**: param names truncated to 12 chars for Hapax; `fullParamName` preserves originals
+- **AssignCC**: 8 slots for Hapax ASSIGN encoders
+- **AutomationLane**: up to 64 lanes, type-discriminated (`CC`/`PB`/`AT`/`CV`/`NRPN`)
+- **DrumLane**: row → trig/chan/note mapping; `chan` supports MIDI channels, groups, CV outputs
 - Port colors: MIDI In=green, MIDI Out=blue, Audio In=orange, Audio Out=red, CV=yellow
 
 ### Key Utilities (src/utils/)
 
 - **loopDetection.ts** — DFS cycle detection on the routing graph; respects `localOff` flag to break intentional feedback loops
-- **hapaxExport.ts** — generates Hapax `.txt` synth definition files (DRUMLANES, PC, CC, NRPN, ASSIGN sections)
-- **csvParser.ts** — parses midi.guide CSV data into CC/NRPN mappings; truncates param names to 12 chars (Hapax display limit)
-- **studioExport.ts** — JSON save/load for entire studio layouts (versioned, currently v1)
+- **hapaxExport.ts** — generates Hapax `.txt` synth definition files (DRUMLANES, PC, CC, NRPN, ASSIGN, AUTOMATION sections); derives `OUTPORT` from Hapax edge source handles (`midi-a`→A, `midi-b`→B, `midi-c`→C, `usb-host`→USBH)
+- **csvParser.ts** — parses midi.guide CSV data into CC/NRPN mappings; truncates param names to 12 chars (Hapax display limit); groups by section
+- **studioExport.ts** — JSON save/load for entire studio layouts (versioned, currently v1); handles migration of older formats (backfills `automationLanes`, converts legacy `DrumLane.channel` to `trig`/`chan`)
 - **midiGuideService.ts** — fetches instrument definitions from the pencilresearch/midi GitHub repo
 
 ### Data (src/data/)
 
 - **defaultNodes.ts** — preset instruments (Hapax, Digitakt II, Digitone II, etc.) with pre-configured ports and CC maps
+
+### Node Identity & Linking
+
+- Hapax node has fixed ID `hapax-main` with `isHapax: true`, `isRemovable: false`
+- User-added nodes get IDs `node-{counter}` (monotonic integer in module scope)
+- Edge IDs encode the full path: `edge-{source}-{sourceHandle}-{target}-{targetHandle}`
+- Canvas nodes link back to sidebar presets via `presetId` — edits to a preset in the sidebar propagate to its canvas node
 
 ## TypeScript Strictness
 
