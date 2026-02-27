@@ -127,7 +127,7 @@ function processCSVData(rows: CSVRow[]): ParsedCSVResult {
 }
 
 // Clean up parameter names for the Hapax format
-function cleanParamName(name: string): string {
+export function cleanParamName(name: string): string {
   if (!name) return 'Unknown';
 
   // Remove device prefix if present (e.g., "Source: Tune" -> "Tune")
