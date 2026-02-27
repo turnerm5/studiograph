@@ -87,7 +87,7 @@ Core domain types:
 
 ### Data (src/data/)
 
-- **defaultNodes.ts** — preset instruments (Hapax, Digitakt II, Digitone II, etc.) with pre-configured ports and CC maps
+- **defaultNodes.ts** — `HAPAX_PRESET` (initial Hapax node), `DEFAULT_DRUM_LANES` (auto-populated on DRUM type switch), `PORT_COLORS`, `EDGE_COLORS`
 
 ### Node Identity & Linking
 
