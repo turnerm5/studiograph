@@ -76,9 +76,17 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
     return PORT_COLORS[type]?.[direction] || PORT_COLORS.midi.input;
   };
 
+  // Filter CV ports based on showCVPorts toggle
+  const visibleInputs = nodeData.showCVPorts
+    ? nodeData.inputs
+    : nodeData.inputs.filter(p => p.type !== 'cv');
+  const visibleOutputs = nodeData.showCVPorts
+    ? nodeData.outputs
+    : nodeData.outputs.filter(p => p.type !== 'cv');
+
   // Calculate fixed positions for handles based on port count
-  const inputCount = nodeData.inputs.length;
-  const outputCount = nodeData.outputs.length;
+  const inputCount = visibleInputs.length;
+  const outputCount = visibleOutputs.length;
   const maxPorts = Math.max(inputCount, outputCount);
 
   // Calculate node width based on max ports per side - Hapax gets extra width
@@ -150,7 +158,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
     >
 
       {/* Input Handles (Top Left) */}
-      {nodeData.inputs.map((port: Port, index: number) => {
+      {visibleInputs.map((port: Port, index: number) => {
         const leftPos = getHandleLeft(index, inputCount, true);
         return (
           <Handle
@@ -170,7 +178,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
       })}
 
       {/* Output Handles (Top Right) */}
-      {nodeData.outputs.map((port: Port, index: number) => {
+      {visibleOutputs.map((port: Port, index: number) => {
         const leftPos = getHandleLeft(index, outputCount, false);
         return (
           <Handle
@@ -190,7 +198,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
       })}
 
       {/* Port Labels - precisely aligned with handles */}
-      {nodeData.inputs.map((port: Port, index: number) => {
+      {visibleInputs.map((port: Port, index: number) => {
         const leftPos = getHandleLeft(index, inputCount, true);
         return (
           <span
@@ -208,7 +216,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
           </span>
         );
       })}
-      {nodeData.outputs.map((port: Port, index: number) => {
+      {visibleOutputs.map((port: Port, index: number) => {
         const leftPos = getHandleLeft(index, outputCount, false);
         return (
           <span
@@ -313,6 +321,18 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
           <span className="w-2 h-2 rounded-full bg-red-500"></span>
           <span>Audio Out</span>
         </div>
+        {nodeData.inputs.some(p => p.type === 'cv') && (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+            <span>CV In</span>
+          </div>
+        )}
+        {nodeData.outputs.some(p => p.type === 'cv') && (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+            <span>CV Out</span>
+          </div>
+        )}
       </div>
 
       {/* Resize handle */}

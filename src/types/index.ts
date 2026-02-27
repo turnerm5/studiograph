@@ -72,6 +72,7 @@ export interface InstrumentNodeData extends Record<string, unknown> {
   iconId?: string; // Icon identifier for display
   localOff?: boolean; // Local Off prevents MIDI feedback loops
   presetId?: string; // Links canvas node to sidebar preset for edit propagation
+  showCVPorts?: boolean; // Toggle visibility of CV/Gate ports (for Hapax)
 }
 
 export type InstrumentNode = Node<InstrumentNodeData>;
