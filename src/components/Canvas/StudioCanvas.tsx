@@ -168,7 +168,7 @@ function StudioCanvasInner() {
         routingOffset: edgeOffsets.get(edge.id) || 0,
       },
       className: loopEdges.includes(edge.id) ? 'loop-edge' : '',
-      animated: loopEdges.includes(edge.id),
+      animated: true,
     }));
   }, [edges, loopEdges]);
 
