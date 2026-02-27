@@ -46,9 +46,11 @@ export function traceHapaxRouting(
     handles.add(hapaxHandle);
     result.set(nodeId, handles);
 
-    // Follow outgoing MIDI edges from this node
+    // Follow outgoing MIDI edges from this node (never re-enter the Hapax —
+    // return edges back to the Hapax would incorrectly propagate handles)
     const neighbors = midiAdj.get(nodeId) || [];
     for (const { target } of neighbors) {
+      if (target === hapaxNode.id) continue;
       const visitedHandles = visited.get(target) || new Set();
       if (!visitedHandles.has(hapaxHandle)) {
         visitedHandles.add(hapaxHandle);
