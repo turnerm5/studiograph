@@ -58,6 +58,10 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
   const [cvInCount, setCvInCount] = useState(0);
   const [cvOutCount, setCvOutCount] = useState(0);
 
+  // USB port counts
+  const [usbCount, setUsbCount] = useState(0);
+  const [usbMode, setUsbMode] = useState<'host' | 'device'>('device');
+
   // Load manufacturers on open
   useEffect(() => {
     if (isOpen && manufacturers.length === 0) {
@@ -81,6 +85,8 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setAudioOutCount(0);
       setCvInCount(0);
       setCvOutCount(0);
+      setUsbCount(0);
+      setUsbMode('device');
     }
   }, [isOpen]);
 
@@ -186,19 +192,38 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     }));
   };
 
+  const generateUSBPorts = (count: number, mode: 'host' | 'device'): Port[] => {
+    if (count === 0) return [];
+    const prefix = mode === 'device' ? 'usb-device' : 'usb-host';
+    const label = mode === 'device' ? 'USB Device' : 'USB Host';
+    if (count === 1) {
+      return [{ id: `${prefix}-1`, label, type: 'usb' }];
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      id: `${prefix}-${i + 1}`,
+      label: `${label} ${i + 1}`,
+      type: 'usb' as const,
+    }));
+  };
+
   const handleAddInstrument = useCallback(() => {
     if (!selectedDevice || !previewData) return;
+
+    const usbDevicePorts = usbMode === 'device' ? generateUSBPorts(usbCount, 'device') : [];
+    const usbHostPorts = usbMode === 'host' ? generateUSBPorts(usbCount, 'host') : [];
 
     const inputs: Port[] = [
       ...generateMidiPorts(midiInCount, 'in'),
       ...generateAudioPorts(audioInCount, 'in'),
       ...generateCVPorts(cvInCount, 'in'),
+      ...usbDevicePorts,
     ];
     const outputs: Port[] = [
       ...generateMidiPorts(midiOutCount, 'out'),
       ...generateMidiThruPorts(midiThruCount),
       ...generateAudioPorts(audioOutCount, 'out'),
       ...generateCVPorts(cvOutCount, 'out'),
+      ...usbHostPorts,
     ];
 
     onAddInstrument({
@@ -211,7 +236,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     });
 
     onClose();
-  }, [selectedDevice, previewData, onAddInstrument, onClose, midiInCount, midiOutCount, midiThruCount, audioInCount, audioOutCount, cvInCount, cvOutCount]);
+  }, [selectedDevice, previewData, onAddInstrument, onClose, midiInCount, midiOutCount, midiThruCount, audioInCount, audioOutCount, cvInCount, cvOutCount, usbCount, usbMode]);
 
   const handleBack = () => {
     if (step === 'devices') {
@@ -518,6 +543,35 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* USB Port Counts */}
+              <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase">USB Ports</h4>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">USB Ports</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={2}
+                    value={usbCount}
+                    onChange={(e) => setUsbCount(Math.max(0, Math.min(2, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-cyan-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                {usbCount > 0 && (
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-300 w-20">USB Role</label>
+                    <select
+                      value={usbMode}
+                      onChange={(e) => setUsbMode(e.target.value as 'host' | 'device')}
+                      className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="device">Device</option>
+                      <option value="host">Host</option>
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           )}
