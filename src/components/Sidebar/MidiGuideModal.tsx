@@ -54,6 +54,10 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
   const [audioInCount, setAudioInCount] = useState(0);
   const [audioOutCount, setAudioOutCount] = useState(0);
 
+  // CV port counts
+  const [cvInCount, setCvInCount] = useState(0);
+  const [cvOutCount, setCvOutCount] = useState(0);
+
   // Load manufacturers on open
   useEffect(() => {
     if (isOpen && manufacturers.length === 0) {
@@ -75,6 +79,8 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setMidiThruCount(0);
       setAudioInCount(0);
       setAudioOutCount(0);
+      setCvInCount(0);
+      setCvOutCount(0);
     }
   }, [isOpen]);
 
@@ -168,17 +174,31 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     }));
   };
 
+  const generateCVPorts = (count: number, direction: 'in' | 'out'): Port[] => {
+    if (count === 0) return [];
+    if (count === 1) {
+      return [{ id: `cv-${direction}-1`, label: direction === 'in' ? 'CV In' : 'CV Out', type: 'cv' }];
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      id: `cv-${direction}-${i + 1}`,
+      label: `CV ${direction === 'in' ? 'In' : 'Out'} ${i + 1}`,
+      type: 'cv' as const,
+    }));
+  };
+
   const handleAddInstrument = useCallback(() => {
     if (!selectedDevice || !previewData) return;
 
     const inputs: Port[] = [
       ...generateMidiPorts(midiInCount, 'in'),
       ...generateAudioPorts(audioInCount, 'in'),
+      ...generateCVPorts(cvInCount, 'in'),
     ];
     const outputs: Port[] = [
       ...generateMidiPorts(midiOutCount, 'out'),
       ...generateMidiThruPorts(midiThruCount),
       ...generateAudioPorts(audioOutCount, 'out'),
+      ...generateCVPorts(cvOutCount, 'out'),
     ];
 
     onAddInstrument({
@@ -191,7 +211,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     });
 
     onClose();
-  }, [selectedDevice, previewData, onAddInstrument, onClose, midiInCount, midiOutCount, midiThruCount, audioInCount, audioOutCount]);
+  }, [selectedDevice, previewData, onAddInstrument, onClose, midiInCount, midiOutCount, midiThruCount, audioInCount, audioOutCount, cvInCount, cvOutCount]);
 
   const handleBack = () => {
     if (step === 'devices') {
@@ -458,6 +478,43 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                   {audioOutCount > 0 && (
                     <span className="text-xs text-gray-500">
                       {generateAudioPorts(audioOutCount, 'out').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* CV Port Counts */}
+              <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase">CV Ports</h4>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">CV In</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={cvInCount}
+                    onChange={(e) => setCvInCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-yellow-500 focus:outline-none focus:border-yellow-500"
+                  />
+                  {cvInCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateCVPorts(cvInCount, 'in').map(p => p.label).join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300 w-20">CV Out</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={cvOutCount}
+                    onChange={(e) => setCvOutCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
+                    className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-purple-500 focus:outline-none focus:border-purple-500"
+                  />
+                  {cvOutCount > 0 && (
+                    <span className="text-xs text-gray-500">
+                      {generateCVPorts(cvOutCount, 'out').map(p => p.label).join(', ')}
                     </span>
                   )}
                 </div>

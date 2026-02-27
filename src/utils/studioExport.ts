@@ -65,7 +65,7 @@ export function parseStudioData(json: string): StudioExport {
 
   // Backfill automationLanes for older save files and migrate DrumLane data
   const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => {
-    const nodeData = { ...node.data, automationLanes: node.data.automationLanes || [] };
+    const nodeData = { ...node.data, automationLanes: node.data.automationLanes || [], showCVPorts: node.data.showCVPorts ?? false };
 
     // Migrate old DrumLane format (had `channel` field, no `trig`/`chan`)
     if (nodeData.drumLanes && Array.isArray(nodeData.drumLanes)) {

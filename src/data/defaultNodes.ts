@@ -23,12 +23,22 @@ export const HAPAX_PRESET: InstrumentPreset = {
     { id: 'midi-in-1', label: 'MIDI In 1', type: 'midi' },
     { id: 'midi-in-2', label: 'MIDI In 2', type: 'midi' },
     { id: 'usb-device', label: 'USB Device', type: 'midi' },
+    { id: 'cv-in-1', label: 'CV In 1', type: 'cv' },
+    { id: 'cv-in-2', label: 'CV In 2', type: 'cv' },
   ],
   outputs: [
     { id: 'midi-a', label: 'MIDI A', type: 'midi' },
     { id: 'midi-b', label: 'MIDI B', type: 'midi' },
     { id: 'midi-c', label: 'MIDI C', type: 'midi' },
     { id: 'usb-host', label: 'USB Host', type: 'midi' },
+    { id: 'cv-1', label: 'CV 1', type: 'cv' },
+    { id: 'cv-2', label: 'CV 2', type: 'cv' },
+    { id: 'cv-3', label: 'CV 3', type: 'cv' },
+    { id: 'cv-4', label: 'CV 4', type: 'cv' },
+    { id: 'gate-1', label: 'Gate 1', type: 'cv' },
+    { id: 'gate-2', label: 'Gate 2', type: 'cv' },
+    { id: 'gate-3', label: 'Gate 3', type: 'cv' },
+    { id: 'gate-4', label: 'Gate 4', type: 'cv' },
   ],
 };
 

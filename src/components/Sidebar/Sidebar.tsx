@@ -146,6 +146,8 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
   const [midiThru, setMidiThru] = useState(initialPreset?.outputs.filter(p => p.type === 'midi' && p.id.includes('thru')).length || 0);
   const [audioIn, setAudioIn] = useState(initialPreset?.inputs.filter(p => p.type === 'audio').length || 2);
   const [audioOut, setAudioOut] = useState(initialPreset?.outputs.filter(p => p.type === 'audio').length || 2);
+  const [cvIn, setCvIn] = useState(initialPreset?.inputs.filter(p => p.type === 'cv').length || 0);
+  const [cvOut, setCvOut] = useState(initialPreset?.outputs.filter(p => p.type === 'cv').length || 0);
   const [ccMap, setCcMap] = useState<CCMapping[]>(initialPreset?.ccMap || []);
   const [nrpnMap, setNrpnMap] = useState<NRPNMapping[]>(initialPreset?.nrpnMap || []);
   const ccFileInputRef = useRef<HTMLInputElement>(null);
@@ -229,6 +231,24 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
       }
     }
 
+    // Add CV inputs
+    for (let i = 0; i < cvIn; i++) {
+      inputs.push({
+        id: `cv-in-${i + 1}`,
+        label: cvIn === 1 ? 'CV In' : `CV In ${i + 1}`,
+        type: 'cv' as PortType,
+      });
+    }
+
+    // Add CV outputs
+    for (let i = 0; i < cvOut; i++) {
+      outputs.push({
+        id: `cv-out-${i + 1}`,
+        label: cvOut === 1 ? 'CV Out' : `CV Out ${i + 1}`,
+        type: 'cv' as PortType,
+      });
+    }
+
     const preset: InstrumentPreset = {
       id: initialPreset?.id || `custom-${Date.now()}`,
       name,
@@ -302,9 +322,9 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             ))}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="space-y-3">
           {/* MIDI Ports */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+          <div className="bg-gray-900 rounded-lg p-2.5">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">MIDI Ports</h4>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -343,7 +363,7 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
             </div>
           </div>
           {/* Audio Ports */}
-          <div className="flex-1 bg-gray-900 rounded-lg p-2.5">
+          <div className="bg-gray-900 rounded-lg p-2.5">
             <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Audio Ports</h4>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -365,6 +385,34 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
                   max={8}
                   value={audioOut}
                   onChange={(e) => setAudioOut(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+            </div>
+          </div>
+          {/* CV Ports */}
+          <div className="bg-gray-900 rounded-lg p-2.5">
+            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">CV Ports</h4>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">CV In</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={cvIn}
+                  onChange={(e) => setCvIn(parseInt(e.target.value) || 0)}
+                  className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-400">CV Out</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={cvOut}
+                  onChange={(e) => setCvOut(parseInt(e.target.value) || 0)}
                   className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white text-center"
                 />
               </div>

@@ -79,6 +79,15 @@ export function NodeEditor() {
     [selectedNodeId, updateNodeData]
   );
 
+  const handleShowCVPortsChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (selectedNodeId) {
+        updateNodeData(selectedNodeId, { showCVPorts: e.target.checked });
+      }
+    },
+    [selectedNodeId, updateNodeData]
+  );
+
   const handleExportSingle = useCallback(() => {
     if (!selectedNodeId) return;
 
@@ -147,6 +156,25 @@ export function NodeEditor() {
             "
           />
         </div>
+
+        {/* Show CV/Gate Ports - Hapax only */}
+        {data.isHapax && (
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-400">Show CV/Gate Ports</label>
+              <p className="text-xs text-gray-500">Display CV inputs and Gate outputs on the node</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.showCVPorts || false}
+                onChange={handleShowCVPortsChange}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-yellow-600 peer-checked:after:bg-white"></div>
+            </label>
+          </div>
+        )}
 
         {/* MIDI Channel - not for Hapax */}
         {!data.isHapax && (
