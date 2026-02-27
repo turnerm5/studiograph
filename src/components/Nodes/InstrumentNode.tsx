@@ -39,9 +39,20 @@ const getIconComponent = (iconId: string | undefined): LucideIcon => {
 type InstrumentNodeType = Node<InstrumentNodeData>;
 
 function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
-  const { removeNode, setSelectedNode, updateNodeWidth, selectedNodeId } = useStudioStore();
+  const { removeNode, setSelectedNode, updateNodeWidth, selectedNodeId, nodes, edges } = useStudioStore();
   const selected = selectedNodeId === id;
   const nodeData = data as InstrumentNodeData;
+
+  // Find Hapax connection for this node
+  const hapaxNode = nodes.find((n) => (n.data as InstrumentNodeData).isHapax);
+  const hapaxEdge = hapaxNode
+    ? edges.find((e) => e.source === hapaxNode.id && e.target === id)
+    : undefined;
+  const hapaxPort = hapaxEdge?.sourceHandle === 'midi-a' ? 'A'
+    : hapaxEdge?.sourceHandle === 'midi-b' ? 'B'
+    : hapaxEdge?.sourceHandle === 'midi-c' ? 'C'
+    : hapaxEdge?.sourceHandle === 'usb-host' ? 'USB'
+    : null;
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -249,6 +260,12 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
       <div className="px-3 py-2 space-y-1">
         {!nodeData.isHapax && (
           <div className="flex items-center gap-2 text-xs">
+            {hapaxPort && (
+              <>
+                <span className="text-gray-500">Hapax:</span>
+                <span className="text-purple-400 font-mono">{hapaxPort}</span>
+              </>
+            )}
             <span className="text-gray-500">CH:</span>
             <span className="text-white font-mono">{nodeData.channel}</span>
             <span className="text-gray-500 ml-2">Type:</span>
