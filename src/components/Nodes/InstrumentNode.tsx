@@ -66,7 +66,7 @@ function InstrumentNodeComponent({ id, data }: NodeProps<InstrumentNodeType>) {
   const maxPorts = Math.max(inputCount, outputCount);
 
   // Calculate node width based on max ports per side - Hapax gets extra width
-  const minWidth = nodeData.isHapax ? 360 : 260;
+  const minWidth = nodeData.isHapax ? 480 : 260;
   const portWidth = 36; // Width per port
   const autoWidth = Math.max(minWidth, maxPorts * 2 * portWidth + 40);
   const calculatedWidth = nodeData.width || autoWidth;

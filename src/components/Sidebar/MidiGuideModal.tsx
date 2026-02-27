@@ -45,6 +45,10 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
     nrpnMap: NRPNMapping[];
   } | null>(null);
 
+  // Audio port toggles
+  const [includeAudioIn, setIncludeAudioIn] = useState(false);
+  const [includeAudioOut, setIncludeAudioOut] = useState(false);
+
   // Load manufacturers on open
   useEffect(() => {
     if (isOpen && manufacturers.length === 0) {
@@ -61,6 +65,8 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
       setSelectedDevice(null);
       setPreviewData(null);
       setError(null);
+      setIncludeAudioIn(false);
+      setIncludeAudioOut(false);
     }
   }, [isOpen]);
 
@@ -115,25 +121,37 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
   const handleAddInstrument = useCallback(() => {
     if (!selectedDevice || !previewData) return;
 
-    // Default ports - MIDI in/out, can be customized later
-    const defaultInputs: Port[] = [
+    const inputs: Port[] = [
       { id: 'midi-in', label: 'MIDI In', type: 'midi' },
     ];
-    const defaultOutputs: Port[] = [
+    const outputs: Port[] = [
       { id: 'midi-out', label: 'MIDI Out', type: 'midi' },
     ];
+
+    if (includeAudioIn) {
+      inputs.push(
+        { id: 'audio-in-l', label: 'In L', type: 'audio' },
+        { id: 'audio-in-r', label: 'In R', type: 'audio' },
+      );
+    }
+    if (includeAudioOut) {
+      outputs.push(
+        { id: 'audio-out-l', label: 'Out L', type: 'audio' },
+        { id: 'audio-out-r', label: 'Out R', type: 'audio' },
+      );
+    }
 
     onAddInstrument({
       name: selectedDevice.name,
       manufacturer: selectedDevice.manufacturer,
       ccMap: previewData.ccMap,
       nrpnMap: previewData.nrpnMap,
-      inputs: defaultInputs,
-      outputs: defaultOutputs,
+      inputs,
+      outputs,
     });
 
     onClose();
-  }, [selectedDevice, previewData, onAddInstrument, onClose]);
+  }, [selectedDevice, previewData, onAddInstrument, onClose, includeAudioIn, includeAudioOut]);
 
   const handleBack = () => {
     if (step === 'devices') {
@@ -314,6 +332,31 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                 <ExternalLink size={12} />
                 View on midi.guide
               </a>
+
+              {/* Audio Port Toggles */}
+              <div className="bg-gray-800 rounded-lg p-3 space-y-2">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase">Audio Ports</h4>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeAudioIn}
+                    onChange={(e) => setIncludeAudioIn(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-600 accent-orange-500 bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-300">Stereo Audio In</span>
+                  <span className="text-xs text-gray-500">(In L, In R)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeAudioOut}
+                    onChange={(e) => setIncludeAudioOut(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-600 accent-red-500 bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-300">Stereo Audio Out</span>
+                  <span className="text-xs text-gray-500">(Out L, Out R)</span>
+                </label>
+              </div>
             </div>
           )}
         </div>
