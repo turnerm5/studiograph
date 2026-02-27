@@ -386,7 +386,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                     onChange={(e) => setMidiInCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
                     className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-green-500 focus:outline-none focus:border-green-500"
                   />
-                  {midiInCount > 0 && (
+                  {midiInCount > 1 && (
                     <span className="text-xs text-gray-500">
                       {generateMidiPorts(midiInCount, 'in').map(p => p.label).join(', ')}
                     </span>
@@ -402,7 +402,7 @@ export function MidiGuideModal({ isOpen, onClose, onAddInstrument }: MidiGuideMo
                     onChange={(e) => setMidiOutCount(Math.max(0, Math.min(4, Number(e.target.value) || 0)))}
                     className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white text-center accent-blue-500 focus:outline-none focus:border-blue-500"
                   />
-                  {midiOutCount > 0 && (
+                  {midiOutCount > 1 && (
                     <span className="text-xs text-gray-500">
                       {generateMidiPorts(midiOutCount, 'out').map(p => p.label).join(', ')}
                     </span>
