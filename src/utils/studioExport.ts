@@ -42,6 +42,56 @@ export function exportStudio(
 }
 
 /**
+ * Validate and migrate parsed studio JSON data
+ */
+export function parseStudioData(json: string): StudioExport {
+  const data = JSON.parse(json);
+
+  // Validate structure
+  if (!data.version || !data.nodes || !data.edges) {
+    throw new Error('Invalid file format: missing required fields');
+  }
+
+  if (data.version !== 1) {
+    throw new Error(`Unsupported file version: ${data.version}`);
+  }
+
+  if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+    throw new Error('Invalid file format: nodes and edges must be arrays');
+  }
+
+  // Ensure customPresets is an array (may be missing in older exports)
+  const customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
+
+  // Backfill automationLanes for older save files and migrate DrumLane data
+  const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => {
+    const nodeData = { ...node.data, automationLanes: node.data.automationLanes || [] };
+
+    // Migrate old DrumLane format (had `channel` field, no `trig`/`chan`)
+    if (nodeData.drumLanes && Array.isArray(nodeData.drumLanes)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nodeData.drumLanes = (nodeData.drumLanes as any[]).map((lane) => ({
+        lane: lane.lane ?? lane.channel ?? 1,
+        trig: lane.trig ?? null,
+        chan: lane.chan ?? null,
+        note: lane.note ?? null,
+        name: lane.name || '',
+      }));
+    }
+
+    return { ...node, data: nodeData };
+  });
+
+  return {
+    version: data.version,
+    exportedAt: data.exportedAt || '',
+    nodes,
+    edges: data.edges,
+    customPresets,
+  };
+}
+
+/**
  * Parse and validate an imported studio file
  */
 export function parseStudioImport(file: File): Promise<StudioExport> {
@@ -51,50 +101,7 @@ export function parseStudioImport(file: File): Promise<StudioExport> {
     reader.onload = (event) => {
       try {
         const json = event.target?.result as string;
-        const data = JSON.parse(json);
-
-        // Validate structure
-        if (!data.version || !data.nodes || !data.edges) {
-          throw new Error('Invalid file format: missing required fields');
-        }
-
-        if (data.version !== 1) {
-          throw new Error(`Unsupported file version: ${data.version}`);
-        }
-
-        if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
-          throw new Error('Invalid file format: nodes and edges must be arrays');
-        }
-
-        // Ensure customPresets is an array (may be missing in older exports)
-        const customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
-
-        // Backfill automationLanes for older save files and migrate DrumLane data
-        const nodes = (data.nodes as Node<InstrumentNodeData>[]).map((node) => {
-          const nodeData = { ...node.data, automationLanes: node.data.automationLanes || [] };
-
-          // Migrate old DrumLane format (had `channel` field, no `trig`/`chan`)
-          if (nodeData.drumLanes && Array.isArray(nodeData.drumLanes)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            nodeData.drumLanes = (nodeData.drumLanes as any[]).map((lane) => ({
-              lane: lane.lane ?? lane.channel ?? 1,
-              trig: lane.trig ?? null,
-              chan: lane.chan ?? null,
-              note: lane.note ?? null,
-              name: lane.name || '',
-            }));
-          }
-
-          return { ...node, data: nodeData };
-        });
-
-        resolve({
-          version: data.version,
-          exportedAt: data.exportedAt || '',
-          nodes,
-          edges: data.edges,
-          customPresets,
-        });
+        resolve(parseStudioData(json));
       } catch (error) {
         reject(error instanceof Error ? error : new Error('Failed to parse file'));
       }
