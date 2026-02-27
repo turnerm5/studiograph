@@ -4,7 +4,7 @@ import {
   Drum, Piano, Guitar, Mic, Speaker, Radio,
   Waves, Sliders, CircuitBoard, Cpu, Box, Disc,
   Volume2, Headphones, Cable, Zap, Save, FolderOpen,
-  Upload, FileText,
+  Upload, FileText, RotateCcw,
   type LucideIcon
 } from 'lucide-react';
 import { MidiGuideModal } from './MidiGuideModal';
@@ -484,11 +484,10 @@ function InstrumentForm({ onClose, onSave, initialPreset, isEditing }: Instrumen
 export function Sidebar() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [showMidiGuide, setShowMidiGuide] = useState(false);
-  const [customPresets, setCustomPresets] = useState<InstrumentPreset[]>([]);
   const [editingPreset, setEditingPreset] = useState<InstrumentPreset | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const { nodes, edges, importStudio, updateNodePortsAndCleanEdges, updateNodeData, uploadCCMap, clearCCMap } = useStudioStore();
+  const { nodes, edges, customPresets, setCustomPresets, importStudio, updateNodePortsAndCleanEdges, updateNodeData, uploadCCMap, clearCCMap, clearStudio } = useStudioStore();
 
   const handleExport = useCallback(() => {
     exportStudio(nodes, edges, customPresets);
@@ -500,8 +499,7 @@ export function Sidebar() {
 
     try {
       const data = await parseStudioImport(file);
-      importStudio(data.nodes, data.edges);
-      setCustomPresets(data.customPresets);
+      importStudio(data.nodes, data.edges, data.customPresets);
       alert(`Imported ${data.nodes.length} instruments and ${data.customPresets.length} presets.`);
     } catch (error) {
       alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -539,8 +537,8 @@ export function Sidebar() {
       ccMap: data.ccMap,
       nrpnMap: data.nrpnMap,
     };
-    setCustomPresets(prev => [...prev, preset as InstrumentPreset]);
-  }, []);
+    setCustomPresets([...customPresets, preset as InstrumentPreset]);
+  }, [customPresets, setCustomPresets]);
 
   const handleEditPreset = (preset: InstrumentPreset) => {
     setEditingPreset(preset);
@@ -636,6 +634,17 @@ export function Sidebar() {
               title="Load Studio"
             >
               <FolderOpen size={16} />
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('Start over? This will clear all instruments and connections.')) {
+                  clearStudio();
+                }
+              }}
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+              title="Clear Canvas"
+            >
+              <RotateCcw size={16} />
             </button>
           </div>
         </div>
