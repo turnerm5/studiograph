@@ -15,6 +15,12 @@ export interface MidiGuideDevice {
   csvUrl: string;
 }
 
+interface GitHubContentItem {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+}
+
 // Cache for manufacturers and devices
 let manufacturersCache: MidiGuideManufacturer[] | null = null;
 const devicesCache: Map<string, MidiGuideDevice[]> = new Map();
@@ -34,9 +40,9 @@ export async function fetchManufacturers(): Promise<MidiGuideManufacturer[]> {
     const data = await response.json();
 
     // Filter to only directories (manufacturers)
-    const manufacturers: MidiGuideManufacturer[] = data
-      .filter((item: any) => item.type === 'dir')
-      .map((item: any) => ({
+    const manufacturers: MidiGuideManufacturer[] = (data as GitHubContentItem[])
+      .filter((item) => item.type === 'dir')
+      .map((item) => ({
         name: item.name,
         path: item.path,
       }))
@@ -69,9 +75,9 @@ export async function fetchDevices(manufacturer: string): Promise<MidiGuideDevic
     const data = await response.json();
 
     // Filter to only CSV files and extract device name
-    const devices: MidiGuideDevice[] = data
-      .filter((item: any) => item.type === 'file' && item.name.endsWith('.csv'))
-      .map((item: any) => {
+    const devices: MidiGuideDevice[] = (data as GitHubContentItem[])
+      .filter((item) => item.type === 'file' && item.name.endsWith('.csv'))
+      .map((item) => {
         // Remove .csv extension to get device name
         const deviceName = item.name.replace(/\.csv$/, '');
         return {
