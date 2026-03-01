@@ -4,10 +4,10 @@ A visual MIDI studio designer for planning instrument routing, managing CC/NRPN 
 
 ## Features
 
-- **Visual routing canvas** — drag-and-drop instruments onto a node graph and connect MIDI, audio, and CV ports with type-safe wiring
+- **Visual routing canvas** — drag-and-drop instruments onto a node graph and connect MIDI, audio, CV, and USB ports with type-safe wiring
 - **Loop detection** — real-time DFS-based cycle detection warns about MIDI feedback loops, with support for intentional Local Off breaks
 - **midi.guide integration** — browse and import CC/NRPN definitions from the [midi.guide](https://midi.guide) database directly into your instruments
-- **Hapax export** — generate `.txt` synth definition files with DRUMLANES, PC, CC, NRPN, and ASSIGN sections ready for your Hapax
+- **Hapax export** — generate `.txt` synth definition files with DRUMLANES, PC, CC, NRPN, ASSIGN, and AUTOMATION sections ready for your Hapax
 - **Studio save/load** — export and import your entire studio layout as JSON
 - **Preset instruments** — ships with preconfigured Hapax, Digitakt II, Digitone II, and more
 
@@ -28,6 +28,8 @@ Open [http://localhost:5173](http://localhost:5173) to start designing your stud
 | `npm run build` | Type-check and build for production |
 | `npm run lint` | Run ESLint |
 | `npm run preview` | Preview production build |
+| `npm run test` | Run tests once (Vitest) |
+| `npm run test:watch` | Run tests in watch mode |
 
 ## Internal Data Model
 
@@ -56,6 +58,7 @@ Each instrument on the canvas is a ReactFlow `Node` whose `data` payload is an `
 | `iconId` | `string` (optional) | Icon key into the icon map (e.g. `'drum'`, `'piano'`) |
 | `localOff` | `boolean` (optional) | Breaks feedback loops in cycle detection |
 | `presetId` | `string` (optional) | Links canvas node back to its sidebar preset for edit propagation |
+| `showCVPorts` | `boolean` (optional) | Toggles CV/Gate port visibility on the Hapax node |
 
 Node IDs follow the pattern `hapax-main` for the fixed Hapax node and `node-{counter}` for user-added instruments. The counter is a monotonically increasing integer tracked in module scope.
 
@@ -64,20 +67,20 @@ Node IDs follow the pattern `hapax-main` for the fixed Hapax node and `node-{cou
 Each node has `inputs` and `outputs` arrays of `Port` objects:
 
 ```ts
-{ id: string, label: string, type: 'midi' | 'audio' | 'cv' }
+{ id: string, label: string, type: 'midi' | 'audio' | 'cv' | 'usb' }
 ```
 
-Port IDs are used as ReactFlow handle IDs (e.g. `midi-a`, `midi-in`, `audio-out-1`). Connections are type-validated — a MIDI output can only connect to a MIDI input.
+Port IDs are used as ReactFlow handle IDs (e.g. `midi-a`, `midi-in`, `audio-out-1`, `usb-device`). Connections are type-validated — a MIDI output can only connect to a MIDI input, USB to USB, etc.
 
 ### Edges (`StudioEdge[]`)
 
 Edges extend ReactFlow's `Edge` with port type metadata:
 
 ```ts
-{ id, source, target, sourceHandle, targetHandle, data: { portType: 'midi' | 'audio' | 'cv' } }
+{ id, source, target, sourceHandle, targetHandle, data: { portType: 'midi' | 'audio' | 'cv' | 'usb', routingOffset?: number } }
 ```
 
-Edge IDs encode the full connection: `edge-{sourceNodeId}-{sourceHandle}-{targetNodeId}-{targetHandle}`. Edge colors are determined by port type (green for MIDI, orange for audio, yellow for CV).
+Edge IDs encode the full connection: `edge-{sourceNodeId}-{sourceHandle}-{targetNodeId}-{targetHandle}`. Edge colors are determined by port type (blue for MIDI, red for audio, yellow for CV, cyan for USB). The optional `routingOffset` adjusts parallel edge spacing.
 
 ### CC Mappings
 
@@ -147,18 +150,18 @@ The full studio layout is saved/loaded as a versioned JSON file:
 }
 ```
 
-On import, older files are migrated: missing `automationLanes` arrays are backfilled, and legacy `DrumLane` objects (which used a `channel` field instead of `trig`/`chan`) are converted to the current schema.
+On import, older files are migrated: missing `automationLanes` arrays are backfilled, legacy `DrumLane` objects (which used a `channel` field instead of `trig`/`chan`) are converted to the current schema, and USB port IDs are renamed to the current convention (`usb-in`/`usb-out` → `usb-device`/`usb-host`).
 
 ### Hapax Export (`.txt`)
 
-Each instrument connected to a Hapax MIDI output generates a Hapax synth definition file. The connection's source handle determines `OUTPORT` (`midi-a` → `A`, `midi-b` → `B`, `midi-c` → `C`, `usb-host` → `USBH`). File structure:
+Each instrument connected to a Hapax output generates a Hapax synth definition file. The connection's source handle determines `OUTPORT` (`midi-a`→A, `midi-b`→B, `midi-c`→C, `midi-d`→D, `usb-host`→USBH, `usb-device`→USBD, `cv-1`→CV1 through `cv-4`→CV4, `gate-1`→G1 through `gate-4`→G4). File structure:
 
 ```
 ############# MANUFACTURER NAME #############
 VERSION 1
 TRACKNAME <name, max 12 chars, no spaces>
 TYPE <POLY|DRUM|MPE>
-OUTPORT <A|B|C|USBH>
+OUTPORT <A|B|C|D|USBH|USBD|CV1-4|G1-4>
 OUTCHAN <1-16>
 
 [DRUMLANES]
@@ -200,4 +203,6 @@ Generated by StudioGraph
 - [Zustand](https://zustand.docs.pmnd.rs) — state management
 - [Tailwind CSS](https://tailwindcss.com) — styling
 - [Vite](https://vite.dev) — build tooling
+- [Vitest](https://vitest.dev) — unit testing
 - [PapaParse](https://www.papaparse.com) — CSV parsing for MIDI specs
+- [Lucide React](https://lucide.dev) — icon library
