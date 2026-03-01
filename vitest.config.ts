@@ -4,5 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      include: ['src/utils/**', 'src/store/**'],
+      exclude: ['src/**/__tests__/**'],
+    },
   },
 });
