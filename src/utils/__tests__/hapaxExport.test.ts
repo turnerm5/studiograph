@@ -31,8 +31,8 @@ function makeHapaxNode(): Node<InstrumentNodeData> {
   });
 }
 
-function makeEdge(id: string, source: string, target: string, sourceHandle?: string): Edge {
-  return { id, source, target, sourceHandle };
+function makeEdge(id: string, source: string, target: string, sourceHandle?: string, portType: 'midi' | 'usb' | 'cv' = 'midi'): Edge {
+  return { id, source, target, sourceHandle, data: { portType } };
 }
 
 function minimalDefinition(overrides?: Partial<HapaxDefinition>): HapaxDefinition {
@@ -84,14 +84,14 @@ describe('findConnectedInstruments', () => {
 
   it('maps usb-host to port USBH', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-host')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-host', 'usb')];
     const result = findConnectedInstruments(nodes, edges);
     expect(result[0].hapaxPort).toBe('USBH');
   });
 
   it('maps cv-1 to port CV1 with isAnalog', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'cv-1')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'cv-1', 'cv')];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(1);
     expect(result[0].hapaxPort).toBe('CV1');
@@ -124,7 +124,7 @@ describe('findConnectedInstruments', () => {
 
   it('maps usb-device to port USBD', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-device')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'usb-device', 'usb')];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(1);
     expect(result[0].hapaxPort).toBe('USBD');
@@ -133,7 +133,7 @@ describe('findConnectedInstruments', () => {
 
   it('maps gate-2 to port G2 with isAnalog', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'gate-2')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'gate-2', 'cv')];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(1);
     expect(result[0].hapaxPort).toBe('G2');
@@ -143,8 +143,8 @@ describe('findConnectedInstruments', () => {
   it('combines cv-1 + gate-1 to same target into CVG1', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
     const edges = [
-      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1'),
-      makeEdge('e2', 'hapax-main', 'node-1', 'gate-1'),
+      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1', 'cv'),
+      makeEdge('e2', 'hapax-main', 'node-1', 'gate-1', 'cv'),
     ];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(1);
@@ -155,8 +155,8 @@ describe('findConnectedInstruments', () => {
   it('does not combine cv-1 + gate-2 (different N)', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1')];
     const edges = [
-      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1'),
-      makeEdge('e2', 'hapax-main', 'node-1', 'gate-2'),
+      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1', 'cv'),
+      makeEdge('e2', 'hapax-main', 'node-1', 'gate-2', 'cv'),
     ];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(2);
@@ -167,8 +167,8 @@ describe('findConnectedInstruments', () => {
   it('does not combine cv + gate going to different targets', () => {
     const nodes = [makeHapaxNode(), makeNode('node-1'), makeNode('node-2')];
     const edges = [
-      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1'),
-      makeEdge('e2', 'hapax-main', 'node-2', 'gate-1'),
+      makeEdge('e1', 'hapax-main', 'node-1', 'cv-1', 'cv'),
+      makeEdge('e2', 'hapax-main', 'node-2', 'gate-1', 'cv'),
     ];
     const result = findConnectedInstruments(nodes, edges);
     expect(result).toHaveLength(2);
@@ -369,7 +369,7 @@ describe('generateAllDefinitions', () => {
       makeHapaxNode(),
       makeNode('node-1', { name: 'Synth', channel: 5 }),
     ];
-    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'cv-1')];
+    const edges = [makeEdge('e1', 'hapax-main', 'node-1', 'cv-1', 'cv')];
     const result = generateAllDefinitions(nodes, edges);
     expect(result).toHaveLength(1);
     expect(result[0].content).toContain('OUTCHAN NULL');
@@ -383,7 +383,7 @@ describe('generateAllDefinitions', () => {
     ];
     const edges = [
       makeEdge('e1', 'hapax-main', 'node-1', 'midi-a'),
-      makeEdge('e2', 'hapax-main', 'node-1', 'cv-1'),
+      makeEdge('e2', 'hapax-main', 'node-1', 'cv-1', 'cv'),
     ];
     const result = generateAllDefinitions(nodes, edges);
     expect(result).toHaveLength(2);
@@ -398,7 +398,7 @@ describe('generateAllDefinitions', () => {
     ];
     const edges = [
       makeEdge('e1', 'hapax-main', 'node-1', 'midi-a'),
-      makeEdge('e2', 'hapax-main', 'node-1', 'cv-1'),
+      makeEdge('e2', 'hapax-main', 'node-1', 'cv-1', 'cv'),
     ];
     const result = generateAllDefinitions(nodes, edges);
     const midiDef = result.find(r => r.filename.includes('_A'));
