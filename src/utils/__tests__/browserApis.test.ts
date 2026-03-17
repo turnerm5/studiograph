@@ -77,7 +77,8 @@ describe('downloadFile', () => {
   it('passes correct content to Blob', () => {
     downloadFile('output.txt', 'CC 74 Cutoff');
 
-    const blobCall = mockCreateObjectURL.mock.calls[0][0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blobCall = (mockCreateObjectURL.mock.calls[0] as any[])[0];
     expect(blobCall.content).toEqual(['CC 74 Cutoff']);
     expect(blobCall.options.type).toBe('text/plain');
   });
@@ -236,7 +237,8 @@ describe('exportStudio', () => {
     exportStudio(nodes, [], []);
 
     expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
-    const blobArg = mockCreateObjectURL.mock.calls[0][0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blobArg = (mockCreateObjectURL.mock.calls[0] as any[])[0];
     expect(blobArg.options.type).toBe('application/json');
 
     // Verify the content is valid JSON with expected fields

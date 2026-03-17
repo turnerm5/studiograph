@@ -154,7 +154,7 @@ describe('AssignCC editor logic', () => {
     expect(getNodeData(nodeId).assignCCs).toHaveLength(8);
 
     // Verify all 8 slots
-    assigns.forEach((a, i) => {
+    assigns.forEach((_a, i) => {
       expect(getNodeData(nodeId).assignCCs[i].slot).toBe(i + 1);
     });
   });
