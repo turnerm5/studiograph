@@ -65,7 +65,7 @@ export const PORT_COLORS = {
 
 // Edge colors by type
 export const EDGE_COLORS = {
-  midi: '#3b82f6',  // Blue
+  midi: '#22c55e',  // Green
   audio: '#ef4444', // Red
   cv: '#eab308',    // Yellow
   usb: '#06b6d4',   // Cyan
